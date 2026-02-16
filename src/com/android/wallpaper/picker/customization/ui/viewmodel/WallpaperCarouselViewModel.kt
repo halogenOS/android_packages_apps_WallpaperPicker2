@@ -18,9 +18,7 @@ package com.android.wallpaper.picker.customization.ui.viewmodel
 
 import android.content.Context
 import android.stats.style.StyleEnums
-import android.stats.style.StyleEnums.SET_WALLPAPER_ENTRY_POINT_WALLPAPER_PREVIEW_SUGGESTED_PHOTOS_HOME_SCREEN
 import com.android.wallpaper.R
-import com.android.wallpaper.asset.ContentUriAsset
 import com.android.wallpaper.config.BaseFlags
 import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.picker.category.domain.interactor.CreativeCategoryInteractor
@@ -29,7 +27,6 @@ import com.android.wallpaper.picker.category.domain.interactor.OnDeviceWallpaper
 import com.android.wallpaper.picker.category.ui.view.SectionCardinality
 import com.android.wallpaper.picker.category.ui.viewmodel.TileViewModel
 import com.android.wallpaper.picker.customization.shared.model.CategoryType
-import com.android.wallpaper.picker.customization.ui.util.PhotoMediaUtils
 import com.android.wallpaper.picker.data.WallpaperModel
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -42,6 +39,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -59,38 +57,7 @@ constructor(
     private val _navigationEvents = MutableSharedFlow<NavigationEvent>()
     val navigationEvents = _navigationEvents.asSharedFlow()
 
-    val curatedPhotoCarouselItems: Flow<List<TileViewModel>> =
-        curatedPhotosInteractor.category
-            .distinctUntilChanged(PhotoMediaUtils.distinctMediaKeyChanged())
-            .map { category ->
-                category.categoryModel.collectionCategoryData?.wallpaperModels?.withIndex()?.map {
-                    wallpaperModelWithIndex ->
-                    val staticWallpaperModel =
-                        wallpaperModelWithIndex.value as? WallpaperModel.StaticWallpaperModel
-                    val total = category.categoryModel.collectionCategoryData.wallpaperModels.size
-
-                    TileViewModel(
-                        defaultDrawable = null,
-                        thumbnailAsset =
-                            ContentUriAsset(context, staticWallpaperModel?.imageWallpaperData?.uri),
-                        text = category.categoryModel.commonCategoryData.title,
-                        showTitle = false,
-                        maxCategoriesInRow = SectionCardinality.Single,
-                        contentDescription =
-                            context.getString(
-                                R.string.carousel_content_description_photos,
-                                wallpaperModelWithIndex.index + 1,
-                                total,
-                            ),
-                    ) {
-                        navigateToPreviewScreen(
-                            wallpaperModelWithIndex.value,
-                            CategoryType.CuratedPhotos,
-                            SET_WALLPAPER_ENTRY_POINT_WALLPAPER_PREVIEW_SUGGESTED_PHOTOS_HOME_SCREEN,
-                        )
-                    }
-                } ?: emptyList()
-            }
+    val curatedPhotoCarouselItems: Flow<List<TileViewModel>> = flowOf(emptyList())
 
     /**
      * This [Flow] maps on device [WallpaperModel] to [TileViewModel]. It is consumed by the
