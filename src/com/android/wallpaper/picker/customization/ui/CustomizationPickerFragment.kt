@@ -159,6 +159,14 @@ class CustomizationPickerFragment :
         } ?: false
     }
 
+    private var pendingFontFileCallback: ((android.net.Uri?) -> Unit)? = null
+    private val fontFilePickerLauncher =
+        this.registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            val cb = pendingFontFileCallback
+            pendingFontFileCallback = null
+            cb?.invoke(uri)
+        }
+
     // This boolean is to determine that when onCreateView, if it is a fragment reenter after the
     // last fragment exit.
     private var isFragmentReenterAfterExit = false
@@ -870,6 +878,10 @@ class CustomizationPickerFragment :
             curatedPhotosTimeUtil = curatedPhotosTimeUtil,
             userEventLogger = userEventLogger,
             iconStyleViewUtil = iconStyleViewUtil,
+            launchFontFilePicker = { onResult ->
+                pendingFontFileCallback = onResult
+                fontFilePickerLauncher.launch(FONT_MIME_TYPES)
+            },
         )
 
         customizationOptionsBinder.bindDiscardChangesDialog(
@@ -1302,6 +1314,15 @@ class CustomizationPickerFragment :
     }
 
     companion object {
+        private val FONT_MIME_TYPES =
+            arrayOf(
+                "font/ttf",
+                "font/otf",
+                "application/x-font-ttf",
+                "application/x-font-otf",
+                "application/font-sfnt",
+                "application/octet-stream",
+            )
         private const val ANIMATION_DURATION = 200
     }
 
