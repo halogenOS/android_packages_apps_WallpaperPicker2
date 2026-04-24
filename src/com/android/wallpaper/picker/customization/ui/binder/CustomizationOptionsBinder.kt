@@ -19,6 +19,7 @@ package com.android.wallpaper.picker.customization.ui.binder
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.view.View
 import androidx.lifecycle.LifecycleOwner
 import com.android.customization.picker.clock.ui.view.ClockViewFactory
@@ -53,6 +54,7 @@ interface CustomizationOptionsBinder {
         navigateToPackThemeActivity: (Intent) -> Unit,
         navigateToScreenSaverSettingsActivity: () -> Unit,
         iconStyleViewUtil: IconStyleViewUtil,
+        launchFontFilePicker: ((onResult: (Uri?) -> Unit) -> Unit)? = null,
     )
 
     fun bindClockPreview(
