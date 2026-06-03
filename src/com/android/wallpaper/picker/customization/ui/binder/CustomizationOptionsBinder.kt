@@ -54,7 +54,7 @@ interface CustomizationOptionsBinder {
         navigateToPackThemeActivity: (Intent) -> Unit,
         navigateToScreenSaverSettingsActivity: () -> Unit,
         iconStyleViewUtil: IconStyleViewUtil,
-        launchFontFilePicker: ((onResult: (Uri?) -> Unit) -> Unit)? = null,
+        launchFontFilePicker: ((onResult: (List<Uri>) -> Unit) -> Unit)? = null,
     )
 
     fun bindClockPreview(

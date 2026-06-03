@@ -145,12 +145,12 @@ class CustomizationPickerFragment2 :
     private val startForResult =
         this.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {}
 
-    private var pendingFontFileCallback: ((android.net.Uri?) -> Unit)? = null
+    private var pendingFontFileCallback: ((List<android.net.Uri>) -> Unit)? = null
     private val fontFilePickerLauncher =
-        this.registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        this.registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
             val cb = pendingFontFileCallback
             pendingFontFileCallback = null
-            cb?.invoke(uri)
+            cb?.invoke(uris)
         }
 
     // This boolean is to determine that when onCreateView, if it is a fragment reenter after the
@@ -1184,6 +1184,8 @@ class CustomizationPickerFragment2 :
                 "application/x-font-ttf",
                 "application/x-font-otf",
                 "application/font-sfnt",
+                "application/zip",
+                "application/x-zip-compressed",
                 "application/octet-stream",
             )
         private const val WALLPAPER_ENTRY_EARLY_COLLAPSE_PROGRESS_THRESHOLD = 0.25f

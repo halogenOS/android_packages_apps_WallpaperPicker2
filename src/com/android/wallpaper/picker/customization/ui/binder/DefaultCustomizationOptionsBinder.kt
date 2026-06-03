@@ -55,7 +55,7 @@ class DefaultCustomizationOptionsBinder @Inject constructor() : CustomizationOpt
         navigateToPackThemeActivity: (Intent) -> Unit,
         navigateToScreenSaverSettingsActivity: () -> Unit,
         iconStyleViewUtil: IconStyleViewUtil,
-        launchFontFilePicker: ((onResult: (android.net.Uri?) -> Unit) -> Unit)?,
+        launchFontFilePicker: ((onResult: (List<android.net.Uri>) -> Unit) -> Unit)?,
     ) {
         // Do nothing intended
     }
