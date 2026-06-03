@@ -80,7 +80,7 @@ object CustomizationPickerBinder2 {
         curatedPhotosTimeUtil: CuratedPhotosTimeUtil,
         userEventLogger: UserEventLogger,
         iconStyleViewUtil: IconStyleViewUtil,
-        launchFontFilePicker: ((onResult: (android.net.Uri?) -> Unit) -> Unit)? = null,
+        launchFontFilePicker: ((onResult: (List<android.net.Uri>) -> Unit) -> Unit)? = null,
     ) {
         val lockCustomizationOptionContainer: LinearLayout =
             view.requireViewById(R.id.lock_customization_option_container)
