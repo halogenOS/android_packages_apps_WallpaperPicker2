@@ -60,7 +60,9 @@
             android:drawableStart="@drawable/photo_library_24px"
             android:drawablePadding="@dimen/photos_carousel_padding"
             android:gravity="center_vertical|start"
-            android:paddingHorizontal="@dimen/more_photos_button_padding"
+            android:paddingStart="@dimen/more_photos_button_padding"
+            android:paddingEnd="@dimen/more_photos_button_padding_end"
+            android:paddingVertical="@dimen/more_photos_button_padding_vertical"
             />
 
         <ViewStub

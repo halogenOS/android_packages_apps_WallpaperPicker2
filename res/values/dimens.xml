@@ -491,6 +491,9 @@
     <dimen name="photos_carousel_padding">8dp</dimen>
     <dimen name="more_photos_button_length">154dp</dimen>
     <dimen name="more_photos_button_padding">16dp</dimen>
+    <!-- Material 3 filled button with an icon: 24dp after the label, 40dp tall with the 24dp icon -->
+    <dimen name="more_photos_button_padding_end">24dp</dimen>
+    <dimen name="more_photos_button_padding_vertical">8dp</dimen>
     <dimen name="view_all_button_width">100dp</dimen>
 
     <!-- Dimensions for the photos sign in banner -->
