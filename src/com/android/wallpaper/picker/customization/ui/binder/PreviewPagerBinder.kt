@@ -20,8 +20,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.android.wallpaper.R
 import com.android.wallpaper.picker.customization.ui.view.PreviewPagerViews
+import com.android.wallpaper.picker.customization.ui.view.swipeTransitionId
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPickerViewModel2
 import kotlinx.coroutines.launch
 
@@ -36,10 +36,12 @@ object PreviewPagerBinder {
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    viewModel.isPagerInteractable.collect {
+                    viewModel.isPagerInteractable.collect { isInteractable ->
                         previewPagerViews.previewPager.apply {
-                            getTransition(R.id.preview_swipe_transition).isEnabled = it
-                            shouldInterceptTouch = it
+                            viewModel.pages
+                                .mapNotNull { it.swipeTransitionId }
+                                .forEach { getTransition(it).isEnabled = isInteractable }
+                            shouldInterceptTouch = isInteractable
                         }
                     }
                 }

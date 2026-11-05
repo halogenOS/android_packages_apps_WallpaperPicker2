@@ -67,4 +67,16 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/wallpaper_picker_entry_bottom_space" />
+
+    <!-- The style page leaves out the wallpaper entry and lists its options in place of it. -->
+    <LinearLayout
+        android:id="@+id/style_customization_option_container"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:showDividers="middle"
+        android:divider="@drawable/customization_option_entry_divider"
+        android:orientation="vertical"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/wallpaper_picker_entry" />
 </androidx.constraintlayout.widget.ConstraintLayout>

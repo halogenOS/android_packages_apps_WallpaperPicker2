@@ -20,7 +20,7 @@ import android.view.SurfaceView
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.LifecycleOwner
 import com.android.customization.picker.clock.ui.view.ClockViewFactory
-import com.android.wallpaper.model.Screen
+import com.android.wallpaper.model.PickerPage
 import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.picker.customization.ui.viewmodel.ColorUpdateViewModel
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPickerViewModel2
@@ -37,7 +37,7 @@ constructor(private val workspaceCallbackBinder: WorkspaceCallbackBinder) : Work
         alternativeWorkspaceView: ComposeView,
         viewModel: CustomizationPickerViewModel2,
         colorUpdateViewModel: ColorUpdateViewModel,
-        screen: Screen,
+        page: PickerPage,
         deviceDisplayType: DeviceDisplayType,
         lifecycleOwner: LifecycleOwner,
         clockViewFactory: ClockViewFactory,
@@ -47,7 +47,7 @@ constructor(private val workspaceCallbackBinder: WorkspaceCallbackBinder) : Work
             viewModel = viewModel,
             colorUpdateViewModel = colorUpdateViewModel,
             workspaceCallbackBinder = workspaceCallbackBinder,
-            screen = screen,
+            screen = page.previewScreen,
             deviceDisplayType = deviceDisplayType,
             lifecycleOwner = lifecycleOwner,
             clockViewFactory = clockViewFactory,

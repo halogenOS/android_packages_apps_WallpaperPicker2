@@ -16,7 +16,6 @@
 <com.android.wallpaper.picker.preview.ui.view.ClickableMotionLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/preview_pager"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -73,6 +72,27 @@
                 android:text="@string/home_screen_tab"
                 android:importantForAccessibility="no"/>
         </FrameLayout>
+
+        <!-- The container here is to increase the click area for a11y -->
+        <FrameLayout
+            android:id="@+id/style_preview_label_container"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:minHeight="48dp"
+            android:minWidth="96dp"
+            android:paddingBottom="@dimen/customization_picker_preview_label_padding_bottom"
+            android:accessibilityHeading="true">
+            <TextView
+                android:id="@+id/style_preview_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:layout_gravity="center"
+                android:textColor="@color/system_on_surface"
+                android:maxLines="1"
+                android:text="@string/style_tab"
+                android:importantForAccessibility="no"/>
+        </FrameLayout>
     </LinearLayout>
 
     <TextView
@@ -81,16 +101,18 @@
         android:layout_height="wrap_content"
         android:paddingBottom="@dimen/customization_picker_preview_label_padding_bottom"
         android:visibility="invisible"
-        android:text="Placeholder for the previews to position below it"
+        android:text="@string/home_screen_tab"
         android:maxLines="1"
-        android:ellipsize="end"
-        tools:ignore="HardcodedText" />
+        android:ellipsize="end" />
 
     <include layout="@layout/wallpaper_preview_card2"
         android:id="@+id/lock_preview" />
 
     <include layout="@layout/wallpaper_preview_card2"
         android:id="@+id/home_preview" />
+
+    <include layout="@layout/wallpaper_preview_card2"
+        android:id="@+id/style_preview" />
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline_center"

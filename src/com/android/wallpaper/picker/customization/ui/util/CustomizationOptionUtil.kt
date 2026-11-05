@@ -16,7 +16,7 @@
 
 package com.android.wallpaper.picker.customization.ui.util
 
-import com.android.wallpaper.model.Screen
+import com.android.wallpaper.model.PickerPage
 
 /** This util provides the different [CustomizationOption]'s and util functions. */
 interface CustomizationOptionUtil {
@@ -30,5 +30,8 @@ interface CustomizationOptionUtil {
      */
     fun getCustomizationOptionFromDestination(destination: String): CustomizationOption?
 
-    fun getScreenFromOption(option: CustomizationOption): Screen?
+    fun getPageFromOption(option: CustomizationOption): PickerPage?
+
+    /** Pages the picker shows. The picker hides the preview and the label of every other page. */
+    val pages: Set<PickerPage>
 }

@@ -42,10 +42,6 @@ class ClickableMotionLayout(context: Context, attrs: AttributeSet?) : MotionLayo
     /** lambda to run after the completion of a motion layout transition */
     private var onTransitionCompleted: ((currentId: Int) -> Unit)? = null
 
-    // we start at the home screen (right boundary)
-    private var isAtLeftBoundary = false
-    private var isAtRightBoundary = true
-
     private var startX = 0f
     private var lastX = 0f
 
@@ -90,14 +86,6 @@ class ClickableMotionLayout(context: Context, attrs: AttributeSet?) : MotionLayo
                             "onTransitionChange - startId: $startId, endId: $endId, progress: $progress",
                         )
                     }
-
-                    when (endId) {
-                        R.id.home_preview_selected,
-                        R.id.lock_preview_selected -> {
-                            // Update boundary states during normal preview transition
-                            updateBoundaryStates(progress)
-                        }
-                    }
                 }
 
                 override fun onTransitionCompleted(motionLayout: MotionLayout?, currentId: Int) {
@@ -112,16 +100,7 @@ class ClickableMotionLayout(context: Context, attrs: AttributeSet?) : MotionLayo
                             }
                             // trigger a transition to the appropriate preview after the edge effect
                             // transition state has completed
-                            postDelayed(
-                                {
-                                    if (currentId == R.id.leftEdgeActive) {
-                                        transitionToState(R.id.lock_preview_selected)
-                                    } else {
-                                        transitionToState(R.id.home_preview_selected)
-                                    }
-                                },
-                                100,
-                            )
+                            postDelayed({ transitionToStart() }, 100)
                         }
                     }
                     onTransitionCompleted?.invoke(currentId)
@@ -164,45 +143,11 @@ class ClickableMotionLayout(context: Context, attrs: AttributeSet?) : MotionLayo
 
                 if (!edgeTransitionInProgress) {
                     // Check for edge overscroll attempts
-                    if (isAtLeftBoundary && deltaX > 0) {
-                        // Swiping right when already at left boundary (lock preview)
-                        if (currentState == R.id.lock_preview_selected) {
-                            post {
-                                val leftEdgeTransition = getTransition(R.id.leftEdgeTransition)
-                                if (leftEdgeTransition != null) {
-                                    setTransition(R.id.leftEdgeTransition)
-                                    transitionToEnd()
-                                    edgeTransitionInProgress = true
-                                }
-                            }
-                            return true
-                        } else {
-                            if (DEBUG) {
-                                Log.d(
-                                    TAG,
-                                    "Current state is NOT lock_preview_selected: $currentState",
-                                )
-                            }
-                        }
-                    } else if (isAtRightBoundary && deltaX < 0) {
-                        // Swiping left when already at right boundary (home preview)
-                        if (currentState == R.id.home_preview_selected) {
-                            post {
-                                val rightEdgeTransition = getTransition(R.id.rightEdgeTransition)
-                                if (rightEdgeTransition != null) {
-                                    setTransition(R.id.rightEdgeTransition)
-                                    transitionToEnd()
-                                    edgeTransitionInProgress = true
-                                }
-                            }
-                            return true
-                        } else {
-                            if (DEBUG) {
-                                Log.d(
-                                    TAG,
-                                    "Current state is NOT home_preview_selected: $currentState",
-                                )
-                            }
+                    findEdgeTransition(deltaX)?.let { edgeTransitionId ->
+                        post {
+                            setTransition(edgeTransitionId)
+                            transitionToEnd()
+                            edgeTransitionInProgress = true
                         }
                     }
                     return true
@@ -217,22 +162,19 @@ class ClickableMotionLayout(context: Context, attrs: AttributeSet?) : MotionLayo
         return true
     }
 
-    private fun updateBoundaryStates(progress: Float) {
-        val wasAtLeftBoundary = isAtLeftBoundary
-        val wasAtRightBoundary = isAtRightBoundary
-
-        isAtLeftBoundary = progress <= 0.1f // At lock preview
-        isAtRightBoundary = progress >= 0.9f // At home preview
-
-        if (wasAtLeftBoundary != isAtLeftBoundary || wasAtRightBoundary != isAtRightBoundary) {
-            if (DEBUG) {
-                Log.d(
-                    TAG,
-                    "Boundary states changed - isAtLeftBoundary: $isAtLeftBoundary," +
-                        " isAtRightBoundary: $isAtRightBoundary, progress: $progress",
-                )
+    /**
+     * Edge effect transition of a swipe by [deltaX], when the motion scene starts it at the current
+     * state. Swiping right starts the left edge effect, swiping left starts the right one.
+     */
+    @IdRes
+    private fun findEdgeTransition(deltaX: Float): Int? {
+        val edgeTransitionId =
+            when {
+                deltaX > 0 -> R.id.leftEdgeTransition
+                deltaX < 0 -> R.id.rightEdgeTransition
+                else -> return null
             }
-        }
+        return edgeTransitionId.takeIf { getTransition(it)?.startConstraintSetId == currentState }
     }
 
     private val clickableViewIds = mutableSetOf<Int>()

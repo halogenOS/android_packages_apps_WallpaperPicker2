@@ -21,7 +21,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
-import com.android.wallpaper.model.Screen
+import com.android.wallpaper.model.PickerPage
 import com.android.wallpaper.picker.customization.ui.util.CustomizationOptionUtil.CustomizationOption
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationOptionsData
 import dagger.hilt.android.scopes.ActivityScoped
@@ -32,7 +32,7 @@ class DefaultCustomizationOptionViewUtil @Inject constructor() : CustomizationOp
 
     override fun getOptionEntries(
         customizationOptionsData: CustomizationOptionsData,
-        screen: Screen,
+        page: PickerPage,
         optionContainer: LinearLayout,
         layoutInflater: LayoutInflater,
     ): List<Pair<CustomizationOption, View>> = emptyList()

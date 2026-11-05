@@ -21,13 +21,11 @@ import android.widget.TextView
 import com.android.wallpaper.picker.common.text.ui.viewmodel.Text
 
 object TextViewBinder {
-    fun bind(
-        view: TextView,
-        viewModel: Text,
-    ) {
+    fun bind(view: TextView, viewModel: Text) {
         when (viewModel) {
             is Text.Resource -> view.setText(viewModel.res)
             is Text.Loaded -> view.text = viewModel.text
+            is Text.Formatted -> view.text = viewModel.asString(view.context)
         }
     }
 }

@@ -26,10 +26,11 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.android.customization.picker.clock.ui.view.ClockViewFactory
 import com.android.wallpaper.R
+import com.android.wallpaper.model.PickerPage
 import com.android.wallpaper.model.Screen
 import com.android.wallpaper.model.Screen.HOME_SCREEN
-import com.android.wallpaper.model.Screen.LOCK_SCREEN
 import com.android.wallpaper.model.wallpaper.DeviceDisplayType
+import com.android.wallpaper.picker.customization.ui.view.titleRes
 import com.android.wallpaper.picker.customization.ui.viewmodel.ColorUpdateViewModel
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPickerViewModel2
 import com.android.wallpaper.picker.data.WallpaperModel
@@ -59,7 +60,7 @@ object BasePreviewBinder {
         viewModel: CustomizationPickerViewModel2,
         colorUpdateViewModel: ColorUpdateViewModel,
         workspaceBinder: WorkspaceBinder,
-        screen: Screen,
+        page: PickerPage,
         deviceDisplayType: DeviceDisplayType,
         displaySize: Point,
         mainScope: CoroutineScope,
@@ -67,34 +68,26 @@ object BasePreviewBinder {
         wallpaperConnectionUtils: WallpaperConnectionUtils,
         isFirstBindingDeferred: CompletableDeferred<Boolean>,
         onLaunchPreview: ((WallpaperModel) -> Unit)? = null,
-        onTransitionToScreen: ((Screen) -> Unit)? = null,
+        onTransitionToPage: (() -> Unit)? = null,
         onPreviewReady: ((Screen) -> Unit)? = null,
         onPreviewSurfaceDestroyed: ((Screen) -> Unit)? = null,
         clockViewFactory: ClockViewFactory,
     ) {
+        val screen = page.previewScreen
         val wallpaperSurface: SurfaceView = view.requireViewById(R.id.wallpaper_surface)
         val workspaceSurface: SurfaceView = view.requireViewById(R.id.workspace_surface)
 
         view.contentDescription =
             view.context.getString(
                 R.string.wallpaper_preview_card_content_description_non_editable,
-                when (screen) {
-                    LOCK_SCREEN -> view.context.getString(R.string.lock_screen_tab)
-                    HOME_SCREEN -> view.context.getString(R.string.home_screen_tab)
-                },
+                view.context.getString(page.titleRes),
                 "", // No need to specify folded or unfolded state for main screen preview
             )
 
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    val previewAlpha =
-                        if (screen == HOME_SCREEN) {
-                            viewModel.homePreviewAlpha
-                        } else {
-                            viewModel.lockPreviewAlpha
-                        }
-                    previewAlpha.collect {
+                    viewModel.previewAlpha.getValue(page).collect {
                         if (it.alpha == 0f) {
                             view.importantForAccessibility =
                                 View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
@@ -110,18 +103,18 @@ object BasePreviewBinder {
                                 if (screen == HOME_SCREEN) it.homeWallpaper
                                 else it.lockWallpaper ?: it.homeWallpaper
                             },
-                            viewModel.selectedPreviewScreen,
+                            viewModel.selectedPage,
                             viewModel.isPreviewClickable,
                             ::Triple,
                         )
-                        .collect { (wallpaper, selectedPreviewScreen, isPreviewClickable) ->
+                        .collect { (wallpaper, selectedPage, isPreviewClickable) ->
                             if (isPreviewClickable) {
-                                if (selectedPreviewScreen == screen) {
+                                if (selectedPage == page) {
                                     view.setOnClickListener { onLaunchPreview?.invoke(wallpaper) }
                                     // Set selected state to be announced for Talkback
                                     view.isSelected = true
                                 } else {
-                                    view.setOnClickListener { onTransitionToScreen?.invoke(screen) }
+                                    view.setOnClickListener { onTransitionToPage?.invoke() }
                                     // Set selected state to be announced for Talkback
                                     view.isSelected = false
                                 }
@@ -156,7 +149,7 @@ object BasePreviewBinder {
             alternativeWorkspaceView = view.requireViewById(R.id.alternative_workspace_view),
             viewModel = viewModel,
             colorUpdateViewModel = colorUpdateViewModel,
-            screen = screen,
+            page = page,
             deviceDisplayType = deviceDisplayType,
             lifecycleOwner = lifecycleOwner,
             clockViewFactory = clockViewFactory,

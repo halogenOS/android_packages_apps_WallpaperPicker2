@@ -21,14 +21,7 @@ import android.view.View
 import com.android.wallpaper.picker.common.text.ui.viewmodel.Text
 
 object ContentDescriptionViewBinder {
-    fun bind(
-        view: View,
-        viewModel: Text,
-    ) {
-        view.contentDescription =
-            when (viewModel) {
-                is Text.Resource -> view.context.getString(viewModel.res)
-                is Text.Loaded -> viewModel.text
-            }
+    fun bind(view: View, viewModel: Text) {
+        view.contentDescription = viewModel.asString(view.context)
     }
 }

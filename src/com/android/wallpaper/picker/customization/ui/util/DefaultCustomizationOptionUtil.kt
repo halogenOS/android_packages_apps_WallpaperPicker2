@@ -16,7 +16,7 @@
 
 package com.android.wallpaper.picker.customization.ui.util
 
-import com.android.wallpaper.model.Screen
+import com.android.wallpaper.model.PickerPage
 import com.android.wallpaper.picker.customization.ui.util.CustomizationOptionUtil.CustomizationOption
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -28,7 +28,9 @@ class DefaultCustomizationOptionUtil @Inject constructor() : CustomizationOption
         return null
     }
 
-    override fun getScreenFromOption(option: CustomizationOption): Screen? {
+    override fun getPageFromOption(option: CustomizationOption): PickerPage? {
         return null
     }
+
+    override val pages: Set<PickerPage> = setOf(PickerPage.LOCK_SCREEN, PickerPage.HOME_SCREEN)
 }

@@ -28,9 +28,8 @@ class DarkModeStateRepository @Inject constructor(private val uiModeManager: UiM
     private val _isDarkMode = MutableStateFlow(uiModeManager.getIsNightModeActivated())
     val isDarkMode = _isDarkMode.asStateFlow()
 
-    fun setIsDarkMode(isActive: Boolean) {
-        uiModeManager.setNightModeActivated(isActive)
-    }
+    /** Turns the dark theme on or off and returns whether the system applied it. */
+    fun setIsDarkMode(isActive: Boolean): Boolean = uiModeManager.setNightModeActivated(isActive)
 
     fun refreshIsDarkMode() {
         _isDarkMode.value = uiModeManager.getIsNightModeActivated()

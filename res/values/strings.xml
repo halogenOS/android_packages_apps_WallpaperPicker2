@@ -540,6 +540,14 @@
     <string name="home_screen_tab">Home screen</string>
 
     <!--
+    Label for a navigational tab or button that opens a page where the user customizes the look
+    of the system.
+
+    [CHAR LIMIT=24].
+    -->
+    <string name="style_tab">Style</string>
+
+    <!--
     Label for button that lets the user reset the changes they have made.
 
     [CHAR LIMIT=12].

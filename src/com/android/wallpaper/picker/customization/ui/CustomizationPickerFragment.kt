@@ -34,6 +34,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityNodeProvider
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toolbar
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.addCallback
@@ -47,6 +48,7 @@ import androidx.core.view.AccessibilityDelegateCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.doOnPreDraw
+import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
@@ -59,9 +61,8 @@ import com.android.systemui.customization.clocks.utils.ViewUtils.animateToAlpha
 import com.android.wallpaper.R
 import com.android.wallpaper.config.BaseFlags
 import com.android.wallpaper.model.ImageWallpaperInfo
-import com.android.wallpaper.model.Screen
+import com.android.wallpaper.model.PickerPage
 import com.android.wallpaper.model.Screen.HOME_SCREEN
-import com.android.wallpaper.model.Screen.LOCK_SCREEN
 import com.android.wallpaper.module.LargeScreenMultiPanesChecker
 import com.android.wallpaper.module.MultiPanesChecker
 import com.android.wallpaper.module.logging.UserEventLogger
@@ -90,6 +91,12 @@ import com.android.wallpaper.picker.customization.ui.util.EmptyTransitionListene
 import com.android.wallpaper.picker.customization.ui.view.PackThemeSuggestedChip
 import com.android.wallpaper.picker.customization.ui.view.PreviewPagerViews
 import com.android.wallpaper.picker.customization.ui.view.WallpaperPickerEntry
+import com.android.wallpaper.picker.customization.ui.view.optionContainerId
+import com.android.wallpaper.picker.customization.ui.view.previewId
+import com.android.wallpaper.picker.customization.ui.view.previewLabelContainerId
+import com.android.wallpaper.picker.customization.ui.view.previewLabelId
+import com.android.wallpaper.picker.customization.ui.view.selectedStateId
+import com.android.wallpaper.picker.customization.ui.view.swipeTransitionId
 import com.android.wallpaper.picker.customization.ui.viewmodel.ColorUpdateViewModel
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationOptionsData
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPickerViewModel2
@@ -412,18 +419,14 @@ class CustomizationPickerFragment :
             val customizationOptionsData =
                 customizationPickerViewModel.customizationOptionsViewModel.customizationOptionsData
                     .first()
-            val lockScreenCustomizationOptionEntries: List<Pair<CustomizationOption, View>> =
-                initCustomizationOptionEntries(
-                    customizationOptionsData = customizationOptionsData,
-                    view = view,
-                    screen = LOCK_SCREEN,
-                )
-            val homeScreenCustomizationOptionEntries: List<Pair<CustomizationOption, View>> =
-                initCustomizationOptionEntries(
-                    customizationOptionsData = customizationOptionsData,
-                    view = view,
-                    screen = HOME_SCREEN,
-                )
+            val optionEntries: Map<PickerPage, List<Pair<CustomizationOption, View>>> =
+                customizationPickerViewModel.pages.associateWith { page ->
+                    initCustomizationOptionEntries(
+                        customizationOptionsData = customizationOptionsData,
+                        view = view,
+                        page = page,
+                    )
+                }
             val customizationOptionFloatingSheetViewMap: Map<CustomizationOption, View> =
                 customizationOptionViewUtil.initFloatingSheet(
                     customizationOptionsData,
@@ -489,8 +492,7 @@ class CustomizationPickerFragment :
                             bindCustomizationPicker(
                                 customizationOptionsData,
                                 pickerMotionContainer,
-                                lockScreenCustomizationOptionEntries,
-                                homeScreenCustomizationOptionEntries,
+                                optionEntries,
                                 customizationOptionFloatingSheetViewMap,
                                 customizationFloatingSheetContainer,
                                 packThemeSuggestedChip,
@@ -506,8 +508,7 @@ class CustomizationPickerFragment :
                     bindCustomizationPicker(
                         customizationOptionsData,
                         pickerMotionContainer,
-                        lockScreenCustomizationOptionEntries,
-                        homeScreenCustomizationOptionEntries,
+                        optionEntries,
                         customizationOptionFloatingSheetViewMap,
                         customizationFloatingSheetContainer,
                         packThemeSuggestedChip,
@@ -746,8 +747,7 @@ class CustomizationPickerFragment :
     private fun bindCustomizationPicker(
         customizationOptionsData: CustomizationOptionsData,
         pickerMotionContainer: MotionLayout,
-        lockScreenCustomizationOptionEntries: List<Pair<CustomizationOption, View>>,
-        homeScreenCustomizationOptionEntries: List<Pair<CustomizationOption, View>>,
+        optionEntries: Map<PickerPage, List<Pair<CustomizationOption, View>>>,
         customizationOptionFloatingSheetViewMap: Map<CustomizationOption, View>,
         customizationFloatingSheetContainer: FrameLayout,
         packThemeSuggestedChip: PackThemeSuggestedChip?,
@@ -755,8 +755,7 @@ class CustomizationPickerFragment :
         CustomizationPickerBinder2.bind(
             customizationOptionsData = customizationOptionsData,
             view = pickerMotionContainer,
-            lockScreenCustomizationOptionEntries = lockScreenCustomizationOptionEntries,
-            homeScreenCustomizationOptionEntries = homeScreenCustomizationOptionEntries,
+            optionEntries = optionEntries,
             customizationOptionFloatingSheetViewMap = customizationOptionFloatingSheetViewMap,
             viewModel = customizationPickerViewModel,
             colorUpdateViewModel = colorUpdateViewModel,
@@ -982,66 +981,60 @@ class CustomizationPickerFragment :
         previewPager.addClickableViewId(R.id.preview_card)
 
         // Inflate the clock and attach to the lock preview and bind clock view
-        val lockPreview: View = previewPager.requireViewById(R.id.lock_preview)
-        val lockPreviewContainer: ViewGroup =
-            lockPreview.requireViewById(R.id.wallpaper_preview_crop)
+        val lockPreview: View = previewPager.requireViewById(PickerPage.LOCK_SCREEN.previewId)
         val clockHostView =
             customizationOptionViewUtil.createClockPreviewAndAddToParent(
-                lockPreviewContainer,
+                lockPreview.requireViewById(R.id.wallpaper_preview_crop),
                 layoutInflater,
             )
-        // The shade covers the two surface views of the preview and reveals when the preview is
-        // ready to show.
-        val lockPreviewShade =
-            layoutInflater.inflate(R.layout.preview_shade, lockPreviewContainer, false)
-        lockPreviewContainer.addView(lockPreviewShade)
 
-        val homePreview: View = previewPager.requireViewById(R.id.home_preview)
-        val homePreviewContainer: ViewGroup =
-            homePreview.requireViewById(R.id.wallpaper_preview_crop)
-        // The shade covers the two surface views of the preview and reveals when the preview is
-        // ready to show.
-        val homePreviewShade =
-            layoutInflater.inflate(R.layout.preview_shade, homePreviewContainer, false)
-        homePreviewContainer.addView(homePreviewShade)
-
-        // Disable accessibility hierarchy embedding for workspace preview surfaces to ensure
-        // services don't attempt to navigate or interact with purely decorative preview content.
-        val lockWorkspaceSurface: SurfaceView = lockPreview.requireViewById(R.id.workspace_surface)
-        val homeWorkspaceSurface: SurfaceView = homePreview.requireViewById(R.id.workspace_surface)
-        lockWorkspaceSurface.setAccessibilityHierarchyEmbeddingEnabled(false)
-        homeWorkspaceSurface.setAccessibilityHierarchyEmbeddingEnabled(false)
-
-        // Sets up focus listeners for the lock preview and home preview to handle accessibility
-        // focus events.
-        if (isDesktopUi) {
-            setUpPreviewCardFocusListener(
-                lockPreview.requireViewById<View>(R.id.preview_card),
-                previewPager,
-                LOCK_SCREEN,
+        customizationPickerViewModel.pages.forEach { page ->
+            val preview: View = previewPager.requireViewById(page.previewId)
+            val previewContainer: ViewGroup = preview.requireViewById(R.id.wallpaper_preview_crop)
+            // The shade covers the two surface views of the preview and reveals when the preview is
+            // ready to show.
+            previewContainer.addView(
+                layoutInflater.inflate(R.layout.preview_shade, previewContainer, false)
             )
-            setUpPreviewCardFocusListener(
-                homePreview.requireViewById<View>(R.id.preview_card),
-                previewPager,
-                HOME_SCREEN,
-            )
+
+            // Disable accessibility hierarchy embedding for workspace preview surfaces to ensure
+            // services don't attempt to navigate or interact with purely decorative preview
+            // content.
+            preview
+                .requireViewById<SurfaceView>(R.id.workspace_surface)
+                .setAccessibilityHierarchyEmbeddingEnabled(false)
+
+            if (isDesktopUi) {
+                setUpPreviewCardFocusListener(
+                    preview.requireViewById<View>(R.id.preview_card),
+                    previewPager,
+                    page,
+                )
+            }
         }
+        (PickerPage.entries - customizationPickerViewModel.pages).forEach { previewPager.hidePage(it) }
 
         return PreviewPagerViews(
             previewPager = previewPager,
-            lockPreviewLabel = previewPager.requireViewById(R.id.lock_preview_label),
-            homePreviewLabel = previewPager.requireViewById(R.id.home_preview_label),
-            lockPreviewLabelContainer =
-                previewPager.requireViewById(R.id.lock_preview_label_container),
-            homePreviewLabelContainer =
-                previewPager.requireViewById(R.id.home_preview_label_container),
-            lockPreview = previewPager.requireViewById(R.id.lock_preview),
-            homePreview = previewPager.requireViewById(R.id.home_preview),
-            lockPreviewShade = lockPreviewShade,
-            homePreviewShade = homePreviewShade,
             clockHostView = clockHostView,
             clockFaceClickDelegateView = rootView.requireViewById(R.id.clock_face_click_delegate),
         )
+    }
+
+    /**
+     * Hides the preview and the label of a page the picker does not show, in every state of the
+     * preview pager, and disables the swipe transition to the page.
+     */
+    private fun ClickableMotionLayout.hidePage(page: PickerPage) {
+        constraintSetIds.forEach { stateId ->
+            getConstraintSet(stateId).apply {
+                setVisibility(page.previewId, View.GONE)
+                setVisibility(page.previewLabelContainerId, View.GONE)
+            }
+        }
+        // The desktop pager lists the labels in a row that the motion scene does not lay out.
+        requireViewById<View>(page.previewLabelContainerId).isGone = true
+        page.swipeTransitionId?.let { getTransition(it).isEnabled = false }
     }
 
     private fun bindPreviewPager(
@@ -1050,34 +1043,6 @@ class CustomizationPickerFragment :
         isFirstBinding: Boolean,
     ) {
         PreviewPagerBinder.bind(previewPagerViews, customizationPickerViewModel, viewLifecycleOwner)
-
-        ColorUpdateBinder.bind(
-            setColor = { color -> previewPagerViews.lockPreviewLabel.setTextColor(color) },
-            color = colorUpdateViewModel.colorOnSurface,
-            shouldAnimate = isOnMainScreen,
-            lifecycleOwner = viewLifecycleOwner,
-        )
-
-        ColorUpdateBinder.bind(
-            setColor = { color -> previewPagerViews.homePreviewLabel.setTextColor(color) },
-            color = colorUpdateViewModel.colorOnSurface,
-            shouldAnimate = isOnMainScreen,
-            lifecycleOwner = viewLifecycleOwner,
-        )
-
-        ColorUpdateBinder.bind(
-            setColor = { color -> previewPagerViews.lockPreviewShade.setBackgroundColor(color) },
-            color = colorUpdateViewModel.colorSurfaceContainer,
-            shouldAnimate = { previewPagerViews.lockPreviewShade.alpha != 0F },
-            lifecycleOwner = viewLifecycleOwner,
-        )
-
-        ColorUpdateBinder.bind(
-            setColor = { color -> previewPagerViews.homePreviewShade.setBackgroundColor(color) },
-            color = colorUpdateViewModel.colorSurfaceContainer,
-            shouldAnimate = { previewPagerViews.homePreviewShade.alpha != 0F },
-            lifecycleOwner = viewLifecycleOwner,
-        )
 
         // Bind the clock view if nonnull
         val clockHostView = previewPagerViews.clockHostView
@@ -1095,23 +1060,37 @@ class CustomizationPickerFragment :
             )
         }
 
-        bindPreview(
-            screen = LOCK_SCREEN,
-            previewPager = previewPagerViews.previewPager,
-            preview = previewPagerViews.lockPreview,
-            isFirstBinding = isFirstBinding,
-        )
+        val previewPager = previewPagerViews.previewPager
+        customizationPickerViewModel.pages.forEach { page ->
+            val previewLabel: TextView = previewPager.requireViewById(page.previewLabelId)
+            val preview: View = previewPager.requireViewById(page.previewId)
+            val previewShade: View = preview.requireViewById(R.id.preview_shade)
 
-        bindPreview(
-            screen = HOME_SCREEN,
-            previewPager = previewPagerViews.previewPager,
-            preview = previewPagerViews.homePreview,
-            isFirstBinding = isFirstBinding,
-        )
+            ColorUpdateBinder.bind(
+                setColor = { color -> previewLabel.setTextColor(color) },
+                color = colorUpdateViewModel.colorOnSurface,
+                shouldAnimate = isOnMainScreen,
+                lifecycleOwner = viewLifecycleOwner,
+            )
+
+            ColorUpdateBinder.bind(
+                setColor = { color -> previewShade.setBackgroundColor(color) },
+                color = colorUpdateViewModel.colorSurfaceContainer,
+                shouldAnimate = { previewShade.alpha != 0F },
+                lifecycleOwner = viewLifecycleOwner,
+            )
+
+            bindPreview(
+                page = page,
+                previewPager = previewPager,
+                preview = preview,
+                isFirstBinding = isFirstBinding,
+            )
+        }
     }
 
     private fun bindPreview(
-        screen: Screen,
+        page: PickerPage,
         previewPager: ClickableMotionLayout,
         preview: View,
         isFirstBinding: Boolean,
@@ -1128,7 +1107,7 @@ class CustomizationPickerFragment :
             viewModel = customizationPickerViewModel,
             colorUpdateViewModel = colorUpdateViewModel,
             workspaceBinder = workspaceBinder,
-            screen = screen,
+            page = page,
             deviceDisplayType = displayUtils.getCurrentDisplayType(activity),
             displaySize =
                 if (displayUtils.isOnWallpaperDisplay(activity))
@@ -1144,7 +1123,7 @@ class CustomizationPickerFragment :
                 val isMultiPanel = multiPanesChecker.isMultiPanesEnabled(appContext)
                 startForResult.launch(
                     WallpaperPreviewActivity.intentBuilder(appContext, false)
-                        .viewAsHome(screen == HOME_SCREEN)
+                        .viewAsHome(page.previewScreen == HOME_SCREEN)
                         .newTask(isMultiPanel)
                         // Hide info sheet for current wallpapers because attribution is not
                         // updated when language updates, see b/418619944
@@ -1153,12 +1132,10 @@ class CustomizationPickerFragment :
                         .build()
                 )
             },
-            onTransitionToScreen = { toScreen -> previewPager.transitionToScreen(toScreen) },
-            onPreviewReady = { previewScreen ->
-                customizationPickerViewModel.setPreviewReady(previewScreen, true)
-            },
-            onPreviewSurfaceDestroyed = { previewScreen ->
-                customizationPickerViewModel.setPreviewReady(previewScreen, false)
+            onTransitionToPage = { previewPager.transitionToPage(page) },
+            onPreviewReady = { customizationPickerViewModel.setPreviewReady(page, true) },
+            onPreviewSurfaceDestroyed = {
+                customizationPickerViewModel.setPreviewReady(page, false)
             },
             clockViewFactory = clockViewFactory,
         )
@@ -1167,19 +1144,13 @@ class CustomizationPickerFragment :
     private fun initCustomizationOptionEntries(
         customizationOptionsData: CustomizationOptionsData,
         view: View,
-        screen: Screen,
+        page: PickerPage,
     ): List<Pair<CustomizationOption, View>> {
-        val optionEntriesContainer =
-            view.requireViewById<LinearLayout>(
-                when (screen) {
-                    LOCK_SCREEN -> R.id.lock_customization_option_container
-                    HOME_SCREEN -> R.id.home_customization_option_container
-                }
-            )
+        val optionEntriesContainer = view.requireViewById<LinearLayout>(page.optionContainerId)
         val optionEntries =
             customizationOptionViewUtil.getOptionEntries(
                 customizationOptionsData = customizationOptionsData,
-                screen = screen,
+                page = page,
                 optionContainer = optionEntriesContainer,
                 layoutInflater = layoutInflater,
             )
@@ -1197,30 +1168,25 @@ class CustomizationPickerFragment :
         return optionEntries
     }
 
-    private fun ClickableMotionLayout.transitionToScreen(screen: Screen) {
-        val targetState =
-            when (screen) {
-                LOCK_SCREEN -> R.id.lock_preview_selected
-                HOME_SCREEN -> R.id.home_preview_selected
-            }
-        transitionToState(targetState, ANIMATION_DURATION)
+    private fun ClickableMotionLayout.transitionToPage(page: PickerPage) {
+        transitionToState(page.selectedStateId, ANIMATION_DURATION)
     }
 
     /**
      * Sets up a focus listener for the preview card to handle accessibility focus events. When the
-     * preview card receives focus, it transitions the preview pager to the corresponding screen.
+     * preview card receives focus, it transitions the preview pager to the corresponding page.
      */
     private fun setUpPreviewCardFocusListener(
         previewCard: View,
         previewPager: ClickableMotionLayout,
-        screen: Screen,
+        page: PickerPage,
     ) {
         previewCard.isFocusable = true
         previewCard.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
 
         previewCard.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus) {
-                previewPager.transitionToScreen(screen)
+                previewPager.transitionToPage(page)
             }
         }
 
@@ -1230,7 +1196,7 @@ class CustomizationPickerFragment :
                 override fun onPopulateAccessibilityEvent(host: View, event: AccessibilityEvent) {
                     super.onPopulateAccessibilityEvent(host, event)
                     if (event.eventType == AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED) {
-                        previewPager.transitionToScreen(screen)
+                        previewPager.transitionToPage(page)
                     }
                 }
             },
@@ -1399,20 +1365,13 @@ class CustomizationPickerFragment :
      * onSurfaceDestroyed, during Fragment transition.
      */
     private fun setPreviewPagerVisible(previewPager: View, isVisible: Boolean) {
-        val lockPreviewLabel: View = previewPager.requireViewById(R.id.lock_preview_label)
-        val homePreviewLabel: View = previewPager.requireViewById(R.id.home_preview_label)
-        val lockPreview: View = previewPager.requireViewById(R.id.lock_preview)
-        val homePreview: View = previewPager.requireViewById(R.id.home_preview)
-        val lockWallpaperSurface: SurfaceView = lockPreview.requireViewById(R.id.wallpaper_surface)
-        val lockWorkspaceSurface: SurfaceView = lockPreview.requireViewById(R.id.workspace_surface)
-        val homeWallpaperSurface: SurfaceView = homePreview.requireViewById(R.id.wallpaper_surface)
-        val homeWorkspaceSurface: SurfaceView = homePreview.requireViewById(R.id.workspace_surface)
-        lockPreviewLabel.visibility = if (isVisible) View.VISIBLE else View.INVISIBLE
-        lockWallpaperSurface.visibility = if (isVisible) View.VISIBLE else View.INVISIBLE
-        lockWorkspaceSurface.visibility = if (isVisible) View.VISIBLE else View.INVISIBLE
-        homePreviewLabel.visibility = if (isVisible) View.VISIBLE else View.INVISIBLE
-        homeWallpaperSurface.visibility = if (isVisible) View.VISIBLE else View.INVISIBLE
-        homeWorkspaceSurface.visibility = if (isVisible) View.VISIBLE else View.INVISIBLE
+        val visibility = if (isVisible) View.VISIBLE else View.INVISIBLE
+        customizationPickerViewModel.pages.forEach { page ->
+            val preview: View = previewPager.requireViewById(page.previewId)
+            previewPager.requireViewById<View>(page.previewLabelId).visibility = visibility
+            preview.requireViewById<SurfaceView>(R.id.wallpaper_surface).visibility = visibility
+            preview.requireViewById<SurfaceView>(R.id.workspace_surface).visibility = visibility
+        }
     }
 
     /**

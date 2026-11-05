@@ -27,14 +27,17 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.android.customization.picker.icon.ui.util.IconStyleViewUtil
 import com.android.wallpaper.R
 import com.android.wallpaper.config.BaseFlags
+import com.android.wallpaper.model.PickerPage
 import com.android.wallpaper.model.Screen
-import com.android.wallpaper.model.Screen.HOME_SCREEN
-import com.android.wallpaper.model.Screen.LOCK_SCREEN
 import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.picker.customization.shared.model.CategoryType
 import com.android.wallpaper.picker.customization.ui.CustomizationPickerActivity
 import com.android.wallpaper.picker.customization.ui.util.CustomizationOptionUtil.CustomizationOption
 import com.android.wallpaper.picker.customization.ui.view.PackThemeSuggestedChip
+import com.android.wallpaper.picker.customization.ui.view.WallpaperPickerEntry
+import com.android.wallpaper.picker.customization.ui.view.optionContainerId
+import com.android.wallpaper.picker.customization.ui.view.selectedStateId
+import com.android.wallpaper.picker.customization.ui.view.showsWallpaperEntry
 import com.android.wallpaper.picker.customization.ui.viewmodel.ColorUpdateViewModel
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationOptionsData
 import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPickerViewModel2
@@ -55,8 +58,7 @@ object CustomizationPickerBinder2 {
     fun bind(
         customizationOptionsData: CustomizationOptionsData,
         view: View,
-        lockScreenCustomizationOptionEntries: List<Pair<CustomizationOption, View>>,
-        homeScreenCustomizationOptionEntries: List<Pair<CustomizationOption, View>>,
+        optionEntries: Map<PickerPage, List<Pair<CustomizationOption, View>>>,
         customizationOptionFloatingSheetViewMap: Map<CustomizationOption, View>?,
         viewModel: CustomizationPickerViewModel2,
         colorUpdateViewModel: ColorUpdateViewModel,
@@ -82,20 +84,16 @@ object CustomizationPickerBinder2 {
         iconStyleViewUtil: IconStyleViewUtil,
         launchFontFilePicker: ((onResult: (List<android.net.Uri>) -> Unit) -> Unit)? = null,
     ) {
-        val lockCustomizationOptionContainer: LinearLayout =
-            view.requireViewById(R.id.lock_customization_option_container)
-        val homeCustomizationOptionContainer: LinearLayout =
-            view.requireViewById(R.id.home_customization_option_container)
+        val optionContainers: Map<PickerPage, LinearLayout> =
+            viewModel.pages.associateWith { view.requireViewById(it.optionContainerId) }
+        val wallpaperPickerEntry: WallpaperPickerEntry =
+            view.requireViewById(R.id.wallpaper_picker_entry)
         val previewPager: ClickableMotionLayout = view.requireViewById(R.id.preview_pager)
 
         previewPager.setOnTransitionCompleted { currentId ->
-            val screen =
-                when (currentId) {
-                    R.id.lock_preview_selected -> LOCK_SCREEN
-                    R.id.home_preview_selected -> HOME_SCREEN
-                    else -> return@setOnTransitionCompleted
-                }
-            viewModel.selectPreviewScreen(screen)
+            viewModel.pages
+                .firstOrNull { it.selectedStateId == currentId }
+                ?.let(viewModel::selectPage)
         }
 
         lifecycleOwner.lifecycleScope.launch {
@@ -114,23 +112,14 @@ object CustomizationPickerBinder2 {
                 }
 
                 launch {
-                    viewModel.selectedPreviewScreen.collect {
-                        when (it) {
-                            LOCK_SCREEN -> {
-                                if (previewPager.currentState != R.id.lock_preview_selected) {
-                                    previewPager.jumpToState(R.id.lock_preview_selected)
-                                }
-                                lockCustomizationOptionContainer.isInvisible = false
-                                homeCustomizationOptionContainer.isInvisible = true
-                            }
-                            HOME_SCREEN -> {
-                                if (previewPager.currentState != R.id.home_preview_selected) {
-                                    previewPager.jumpToState(R.id.home_preview_selected)
-                                }
-                                lockCustomizationOptionContainer.isInvisible = true
-                                homeCustomizationOptionContainer.isInvisible = false
-                            }
+                    viewModel.selectedPage.collect { selectedPage ->
+                        if (previewPager.currentState != selectedPage.selectedStateId) {
+                            previewPager.jumpToState(selectedPage.selectedStateId)
                         }
+                        optionContainers.forEach { (page, container) ->
+                            container.isInvisible = page != selectedPage
+                        }
+                        wallpaperPickerEntry.isInvisible = !selectedPage.showsWallpaperEntry
                     }
                 }
             }
@@ -149,7 +138,7 @@ object CustomizationPickerBinder2 {
         }
 
         WallpaperPickerEntryBinder.bind(
-            view = view.requireViewById(R.id.wallpaper_picker_entry),
+            view = wallpaperPickerEntry,
             viewModel = viewModel,
             colorUpdateViewModel = colorUpdateViewModel,
             lifecycleOwner = lifecycleOwner,
@@ -164,8 +153,7 @@ object CustomizationPickerBinder2 {
         customizationOptionsBinder.bind(
             customizationOptionsData,
             view,
-            lockScreenCustomizationOptionEntries,
-            homeScreenCustomizationOptionEntries,
+            optionEntries,
             customizationOptionFloatingSheetViewMap,
             viewModel,
             colorUpdateViewModel,

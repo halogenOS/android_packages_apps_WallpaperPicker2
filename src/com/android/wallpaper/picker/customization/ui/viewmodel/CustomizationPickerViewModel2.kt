@@ -22,9 +22,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.wallpaper.R
 import com.android.wallpaper.config.BaseFlags
-import com.android.wallpaper.model.Screen
-import com.android.wallpaper.model.Screen.HOME_SCREEN
-import com.android.wallpaper.model.Screen.LOCK_SCREEN
+import com.android.wallpaper.model.PickerPage
 import com.android.wallpaper.picker.common.preview.ui.viewmodel.BasePreviewViewModel
 import com.android.wallpaper.picker.customization.ui.util.CustomizationOptionUtil
 import com.android.wallpaper.util.ActivityUtils
@@ -76,24 +74,33 @@ constructor(
         CUSTOMIZATION_OPTION,
     }
 
-    private val initialPreviewScreen =
+    /** Pages the picker shows. */
+    val pages: Set<PickerPage> = customizationOptionUtil.pages
+
+    private val initialPage =
         initialDestination
             ?.let { customizationOptionUtil.getCustomizationOptionFromDestination(it) }
-            ?.let { customizationOptionUtil.getScreenFromOption(it) }
+            ?.let { customizationOptionUtil.getPageFromOption(it) }
     private val isLaunchedFromLauncher = ActivityUtils.isLaunchedFromLauncher(launchSource)
-    private val _selectedPreviewScreen =
+    private val _selectedPage =
         MutableStateFlow(
-            initialPreviewScreen
+            initialPage
                 ?: if (
                     isLaunchedFromLauncher || BaseFlags.get(context).shouldShowDesktopUi(context)
                 )
-                    HOME_SCREEN
-                else LOCK_SCREEN
+                    PickerPage.HOME_SCREEN
+                else PickerPage.LOCK_SCREEN
         )
-    val selectedPreviewScreen = _selectedPreviewScreen.asStateFlow()
+    val selectedPage = _selectedPage.asStateFlow()
 
-    fun selectPreviewScreen(screen: Screen) {
-        _selectedPreviewScreen.value = screen
+    /** Screen shown by the preview of the selected page. Wallpaper changes apply to this screen. */
+    val selectedPreviewScreen =
+        selectedPage
+            .map { it.previewScreen }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, selectedPage.value.previewScreen)
+
+    fun selectPage(page: PickerPage) {
+        _selectedPage.value = page
     }
 
     val screen =
@@ -111,65 +118,40 @@ constructor(
                 Pair(PickerScreen.MAIN, null),
             )
 
-    private val isLockPreviewReady: MutableStateFlow<Boolean> = MutableStateFlow(false)
-    private val isHomePreviewReady: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    private val previewReadiness: Map<PickerPage, MutableStateFlow<Boolean>> =
+        PickerPage.entries.associateWith { MutableStateFlow(false) }
 
-    fun setPreviewReady(screen: Screen, isReady: Boolean) {
-        when (screen) {
-            LOCK_SCREEN -> isLockPreviewReady.value = isReady
-            HOME_SCREEN -> isHomePreviewReady.value = isReady
-        }
+    fun setPreviewReady(page: PickerPage, isReady: Boolean) {
+        previewReadiness.getValue(page).value = isReady
     }
 
-    /** Flow of float that emits to trigger the lock screen preview to animate to an alpha value. */
-    val lockPreviewAlpha: Flow<PreviewAlpha> =
-        combine(isLockPreviewReady, screen, selectedPreviewScreen) {
-                isPreviewReady,
-                navigationScreen,
-                previewScreen ->
-                getPreviewAlpha(
-                    isPreviewReady = isPreviewReady,
-                    navigationScreen = navigationScreen.first,
-                    previewScreen = previewScreen,
-                    targetScreen = LOCK_SCREEN,
-                )
-            }
-            .distinctUntilChanged()
-            .shareIn(viewModelScope, SharingStarted.WhileSubscribed(), 1)
-
-    /** Flow of a style res Id that represents the home preview label text appearance. */
-    val lockPreviewLabelTextAppearance: Flow<Int> =
-        selectedPreviewScreen.map {
-            if (it == LOCK_SCREEN) {
-                R.style.TextAppearance_Preview_Label_Selected
-            } else {
-                R.style.TextAppearance_Preview_Label_Unselected
-            }
+    /** Flows that emit to trigger the preview of each page to animate to an alpha value. */
+    val previewAlpha: Map<PickerPage, Flow<PreviewAlpha>> =
+        PickerPage.entries.associateWith { page ->
+            combine(previewReadiness.getValue(page), screen, selectedPage) {
+                    isPreviewReady,
+                    navigationScreen,
+                    currentPage ->
+                    getPreviewAlpha(
+                        isPreviewReady = isPreviewReady,
+                        navigationScreen = navigationScreen.first,
+                        selectedPage = currentPage,
+                        targetPage = page,
+                    )
+                }
+                .distinctUntilChanged()
+                .shareIn(viewModelScope, SharingStarted.WhileSubscribed(), 1)
         }
 
-    /** Flow of float that emits to trigger the home screen preview to animate to an alpha value. */
-    val homePreviewAlpha: Flow<PreviewAlpha> =
-        combine(isHomePreviewReady, screen, selectedPreviewScreen) {
-                isPreviewReady,
-                navigationScreen,
-                previewScreen ->
-                getPreviewAlpha(
-                    isPreviewReady = isPreviewReady,
-                    navigationScreen = navigationScreen.first,
-                    previewScreen = previewScreen,
-                    targetScreen = HOME_SCREEN,
-                )
-            }
-            .distinctUntilChanged()
-            .shareIn(viewModelScope, SharingStarted.WhileSubscribed(), 1)
-
-    /** Flow of a style res Id that represents the home preview label text appearance. */
-    val homePreviewLabelTextAppearance: Flow<Int> =
-        selectedPreviewScreen.map {
-            if (it == HOME_SCREEN) {
-                R.style.TextAppearance_Preview_Label_Selected
-            } else {
-                R.style.TextAppearance_Preview_Label_Unselected
+    /** Flows of a style res Id that represents the text appearance of the label of each page. */
+    val previewLabelTextAppearance: Map<PickerPage, Flow<Int>> =
+        PickerPage.entries.associateWith { page ->
+            selectedPage.map {
+                if (it == page) {
+                    R.style.TextAppearance_Preview_Label_Selected
+                } else {
+                    R.style.TextAppearance_Preview_Label_Unselected
+                }
             }
         }
 
@@ -182,13 +164,13 @@ constructor(
     private fun getPreviewAlpha(
         isPreviewReady: Boolean,
         navigationScreen: PickerScreen,
-        previewScreen: Screen,
-        targetScreen: Screen,
+        selectedPage: PickerPage,
+        targetPage: PickerPage,
     ): PreviewAlpha {
         return if (isPreviewReady) {
             when (navigationScreen) {
                 PickerScreen.MAIN ->
-                    if (previewScreen == targetScreen)
+                    if (selectedPage == targetPage)
                         PreviewAlpha(
                             alpha = PREVIEW_SHOW_ALPHA,
                             showLabel = true,
@@ -201,8 +183,8 @@ constructor(
                             shouldAnimate = true,
                         )
                 PickerScreen.CUSTOMIZATION_OPTION -> {
-                    when (previewScreen) {
-                        targetScreen ->
+                    when (selectedPage) {
+                        targetPage ->
                             PreviewAlpha(
                                 alpha = PREVIEW_SHOW_ALPHA,
                                 showLabel = false,

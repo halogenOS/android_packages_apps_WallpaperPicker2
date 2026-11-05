@@ -27,10 +27,14 @@ sealed class Text {
 
     data class Loaded(val text: String) : Text()
 
+    /** The string resource [res] formatted with [args], as [Context.getString] does. */
+    data class Formatted(@StringRes val res: Int, val args: List<Number>) : Text()
+
     fun asString(context: Context): String {
         return when (this) {
             is Resource -> context.getString(res)
             is Loaded -> text
+            is Formatted -> context.getString(res, *args.toTypedArray())
         }
     }
 
@@ -39,6 +43,7 @@ sealed class Text {
         return when (this) {
             is Text.Loaded -> this.text
             is Text.Resource -> stringResource(this.res)
+            is Text.Formatted -> stringResource(this.res, *this.args.toTypedArray())
         }
     }
 
