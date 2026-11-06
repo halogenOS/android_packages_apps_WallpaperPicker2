@@ -227,6 +227,11 @@ public class LiveWallpaperThumbAsset extends Asset {
                     @Override
                     public boolean onLoadFailed(@Nullable GlideException e, Object model,
                             Target<Drawable> target, boolean isFirstResource) {
+                        // Glide shows the placeholder for a thumbnail that fails to load, and the
+                        // placeholder is then the final image of the view.
+                        if (drawableLoadedListener != null) {
+                            drawableLoadedListener.onDrawableLoaded();
+                        }
                         return false;
                     }
 

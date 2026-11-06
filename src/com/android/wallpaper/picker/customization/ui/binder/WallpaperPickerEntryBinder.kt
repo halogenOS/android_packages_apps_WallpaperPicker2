@@ -18,6 +18,8 @@ package com.android.wallpaper.picker.customization.ui.binder
 
 import android.content.res.ColorStateList
 import android.widget.TextView
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.platform.ComposeView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
@@ -36,6 +38,7 @@ import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.picker.category.ui.view.adapter.CuratedPhotosAdapter
 import com.android.wallpaper.picker.category.ui.view.adapter.LoadingAnimationAdapter
 import com.android.wallpaper.picker.customization.shared.model.CategoryType
+import com.android.wallpaper.picker.customization.ui.WallpaperNavigator
 import com.android.wallpaper.picker.customization.ui.compose.desktop.WallpaperCarouselDesktop
 import com.android.wallpaper.picker.customization.ui.view.WallpaperPickerEntry
 import com.android.wallpaper.picker.customization.ui.view.listener.CarouselHorizontalScrollEnforcer
@@ -45,6 +48,7 @@ import com.android.wallpaper.picker.customization.ui.viewmodel.CustomizationPick
 import com.android.wallpaper.picker.customization.ui.viewmodel.WallpaperCarouselViewModel
 import com.android.wallpaper.picker.customization.ui.viewmodel.WallpaperCarouselViewModel.NavigationEvent.NavigateToExtendedWallpaperEffects
 import com.android.wallpaper.picker.customization.ui.viewmodel.WallpaperCarouselViewModel.NavigationEvent.NavigateToPreviewScreen
+import com.android.wallpaper.picker.customization.ui.viewmodel.WallpaperCarouselViewModel.NavigationEvent.NavigateToWallpaper
 import com.android.wallpaper.picker.customization.ui.viewmodel.WallpaperCarouselViewModel.NavigationEvent.NavigateToWallpaperCollection
 import com.android.wallpaper.picker.data.WallpaperModel
 import com.android.wallpaper.picker.data.category.CategoryModel
@@ -82,6 +86,7 @@ object WallpaperPickerEntryBinder {
         navigateToWallpaperCollectionScreen:
             ((categoryModel: CategoryModel, categoryType: CategoryType) -> Unit)?,
         navigateToExtendedWallpaperEffects: (() -> Unit)?,
+        wallpaperNavigator: WallpaperNavigator,
         curatedPhotosTimeUtil: CuratedPhotosTimeUtil,
         userEventLogger: UserEventLogger,
     ) {
@@ -97,6 +102,7 @@ object WallpaperPickerEntryBinder {
             navigateToPreviewScreen = navigateToPreviewScreen,
             navigateToWallpaperCollectionScreen = navigateToWallpaperCollectionScreen,
             navigateToExtendedWallpaperEffects = navigateToExtendedWallpaperEffects,
+            wallpaperNavigator = wallpaperNavigator,
         )
 
         val shouldShowDesktopUi = BaseFlags.get(view.context).shouldShowDesktopUi(view.context)
@@ -105,6 +111,7 @@ object WallpaperPickerEntryBinder {
             bindWallpaperCarouselDesktop(
                 wallpaperPickerEntryView = view,
                 viewModel = wallpaperCarouselViewModel,
+                colorUpdateViewModel = colorUpdateViewModel,
                 lifecycleOwner = lifecycleOwner,
                 curatedPhotosTimeUtil = curatedPhotosTimeUtil,
                 userEventLogger = userEventLogger,
@@ -208,6 +215,7 @@ object WallpaperPickerEntryBinder {
         navigateToWallpaperCollectionScreen:
             ((categoryModel: CategoryModel, categoryType: CategoryType) -> Unit)?,
         navigateToExtendedWallpaperEffects: (() -> Unit)?,
+        wallpaperNavigator: WallpaperNavigator,
     ) {
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -229,6 +237,9 @@ object WallpaperPickerEntryBinder {
                         }
                         is NavigateToExtendedWallpaperEffects -> {
                             navigateToExtendedWallpaperEffects?.invoke()
+                        }
+                        is NavigateToWallpaper -> {
+                            wallpaperNavigator.openWallpaper(navigationEvent.wallpaper)
                         }
                     }
                 }
@@ -261,6 +272,16 @@ object WallpaperPickerEntryBinder {
                     wallpaperCarousel.adapter = loadingAnimationAdapter
 
                     setupWallpaperCarouselRecyclerView(wallpaperCarousel)
+
+                    // Each card loads its thumbnail again, as a thumbnail can be drawn in the theme
+                    // colors.
+                    launch {
+                        colorUpdateViewModel.systemColorsUpdatedNoReplay.collect {
+                            (wallpaperCarousel.adapter as? CuratedPhotosAdapter)?.run {
+                                notifyItemRangeChanged(0, itemCount)
+                            }
+                        }
+                    }
 
                     viewModel.wallpaperCarouselItems.collect {
                         if (it.isNotEmpty()) {
@@ -299,6 +320,7 @@ object WallpaperPickerEntryBinder {
     private fun bindWallpaperCarouselDesktop(
         wallpaperPickerEntryView: WallpaperPickerEntry,
         viewModel: WallpaperCarouselViewModel,
+        colorUpdateViewModel: ColorUpdateViewModel,
         lifecycleOwner: LifecycleOwner,
         curatedPhotosTimeUtil: CuratedPhotosTimeUtil,
         userEventLogger: UserEventLogger,
@@ -308,16 +330,26 @@ object WallpaperPickerEntryBinder {
 
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                // Each card is made anew and loads its thumbnail again, as a thumbnail can be drawn
+                // in the theme colors.
+                val colorUpdates = mutableIntStateOf(0)
+                launch {
+                    colorUpdateViewModel.systemColorsUpdatedNoReplay.collect {
+                        colorUpdates.intValue++
+                    }
+                }
                 launch {
                     viewModel.wallpaperCarouselItems.collect { items ->
                         if (items.isNotEmpty()) {
                             wallpaperPickerEntryView.setExpandable(expandable = true)
                             wallpaperCarouselDesktop.setContent {
-                                WallpaperCarouselDesktop(
-                                    items = items,
-                                    curatedPhotosTimeUtil = curatedPhotosTimeUtil,
-                                    userEventLogger = userEventLogger,
-                                )
+                                key(colorUpdates.intValue) {
+                                    WallpaperCarouselDesktop(
+                                        items = items,
+                                        curatedPhotosTimeUtil = curatedPhotosTimeUtil,
+                                        userEventLogger = userEventLogger,
+                                    )
+                                }
                             }
                         } else {
                             wallpaperPickerEntryView.post {

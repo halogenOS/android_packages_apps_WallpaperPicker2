@@ -464,6 +464,9 @@ public abstract class Asset {
      * Interface for being notified when a drawable has been loaded.
      */
     public interface DrawableLoadedListener {
+        /**
+         * Called once the drawable is loaded into the view.
+         */
         void onDrawableLoaded();
     }
 

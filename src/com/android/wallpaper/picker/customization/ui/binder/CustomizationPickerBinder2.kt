@@ -32,6 +32,7 @@ import com.android.wallpaper.model.Screen
 import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.picker.customization.shared.model.CategoryType
 import com.android.wallpaper.picker.customization.ui.CustomizationPickerActivity
+import com.android.wallpaper.picker.customization.ui.WallpaperNavigator
 import com.android.wallpaper.picker.customization.ui.util.CustomizationOptionUtil.CustomizationOption
 import com.android.wallpaper.picker.customization.ui.view.PackThemeSuggestedChip
 import com.android.wallpaper.picker.customization.ui.view.WallpaperPickerEntry
@@ -77,6 +78,7 @@ object CustomizationPickerBinder2 {
         navigateToWallpaperCollectionScreen:
             ((categoryModel: CategoryModel, categoryType: CategoryType) -> Unit)?,
         navigateToExtendedWallpaperEffects: (() -> Unit)?,
+        wallpaperNavigator: WallpaperNavigator,
         packThemeSuggestedChip: PackThemeSuggestedChip?,
         packThemeSuggestedEntryBinder: PackThemeSuggestedEntryBinder,
         curatedPhotosTimeUtil: CuratedPhotosTimeUtil,
@@ -146,6 +148,7 @@ object CustomizationPickerBinder2 {
             navigateToPreviewScreen = navigateToPreviewScreen,
             navigateToWallpaperCollectionScreen = navigateToWallpaperCollectionScreen,
             navigateToExtendedWallpaperEffects = navigateToExtendedWallpaperEffects,
+            wallpaperNavigator = wallpaperNavigator,
             curatedPhotosTimeUtil = curatedPhotosTimeUtil,
             userEventLogger = userEventLogger,
         )

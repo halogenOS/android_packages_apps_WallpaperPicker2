@@ -68,6 +68,7 @@ import com.android.wallpaper.module.MultiPanesChecker
 import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.picker.AppbarFragment
 import com.android.wallpaper.picker.MyPhotosStarter
+import com.android.wallpaper.picker.category.domain.interactor.CategoryInteractor
 import com.android.wallpaper.picker.category.ui.view.CategoriesFragment
 import com.android.wallpaper.picker.category.ui.view.MyPhotosStarterImpl
 import com.android.wallpaper.picker.category.ui.view.PhotoPickerFragment
@@ -122,7 +123,7 @@ import kotlinx.coroutines.launch
 
 @AndroidEntryPoint(AppbarFragment::class)
 class CustomizationPickerFragment :
-    Hilt_CustomizationPickerFragment(), ActivityEnterAnimationCallback {
+    Hilt_CustomizationPickerFragment(), ActivityEnterAnimationCallback, WallpaperNavigator {
 
     @Inject lateinit var customizationOptionUtil: CustomizationOptionUtil
     @Inject lateinit var customizationOptionViewUtil: CustomizationOptionViewUtil
@@ -144,6 +145,7 @@ class CustomizationPickerFragment :
     @Inject lateinit var myPhotosStarterImpl: MyPhotosStarterImpl
     @Inject lateinit var iconStyleViewUtil: IconStyleViewUtil
     @Inject lateinit var collectionPickers: CollectionPickers
+    @Inject lateinit var categoryInteractor: CategoryInteractor
 
     private val customizationPickerViewModel: CustomizationPickerViewModel2 by viewModels()
 
@@ -818,20 +820,7 @@ class CustomizationPickerFragment :
             navigateToLockScreenNotificationsSettingsActivity = {
                 activity?.startActivity(Intent(Settings.ACTION_LOCKSCREEN_NOTIFICATIONS_SETTINGS))
             },
-            navigateToPreviewScreen = { wallpaperModel, setEntryPoint ->
-                persistentWallpaperModelRepository.setWallpaperModel(wallpaperModel)
-                ActivityUtils.startWallpaperPreviewActivity(
-                    activity = requireActivity(),
-                    isCreativeCategories = false,
-                    shouldNavigateToExtendedWallpaperEffects = false,
-                    isViewAsHome = !isDesktopUi,
-                    requestCode =
-                        CustomizationPickerActivity.VIEW_ONLY_PREVIEW_WALLPAPER_REQUEST_CODE,
-                    isMultiPanesEnabled = multiPanesChecker.isMultiPanesEnabled(requireContext()),
-                    setWallpaperEntryPoint = setEntryPoint,
-                    wallpaperLaunchSource = arguments?.getString(WALLPAPER_LAUNCH_SOURCE) ?: "",
-                )
-            },
+            navigateToPreviewScreen = ::startWallpaperPreview,
             navigateToPackThemeActivity = { intent -> context?.startActivity(intent) },
             navigateToScreenSaverSettingsActivity = {
                 activity?.startActivity(Intent(Settings.ACTION_DREAM_SETTINGS))
@@ -871,6 +860,7 @@ class CustomizationPickerFragment :
                     )
                 }
             },
+            wallpaperNavigator = this,
             packThemeSuggestedChip = packThemeSuggestedChip,
             packThemeSuggestedEntryBinder = packThemeSuggestedEntryBinder,
             curatedPhotosTimeUtil = curatedPhotosTimeUtil,
@@ -887,6 +877,48 @@ class CustomizationPickerFragment :
                 customizationPickerViewModel.customizationOptionsViewModel,
             lifecycleOwner = viewLifecycleOwner,
             activity = requireActivity(),
+        )
+    }
+
+    override fun openWallpaper(wallpaper: WallpaperModel) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val screen = findScreenOpeningAt(wallpaper)
+            if (screen != null) {
+                switchFragment(screen)
+            } else {
+                startWallpaperPreview(
+                    wallpaper,
+                    StyleEnums.SET_WALLPAPER_ENTRY_POINT_WALLPAPER_PREVIEW,
+                )
+            }
+        }
+    }
+
+    /**
+     * Returns the screen opened at [wallpaper] by the picker set for the collection that contains
+     * [wallpaper], or null when no such picker opens at a single wallpaper.
+     */
+    private suspend fun findScreenOpeningAt(wallpaper: WallpaperModel): Fragment? {
+        if (!BaseFlags.get(requireContext()).isWallpapersFragmentEnabled()) return null
+        val collectionId = wallpaper.commonWallpaperData.id.collectionId
+        val category =
+            categoryInteractor.categories.first().find {
+                it.commonCategoryData.collectionId == collectionId
+            } ?: return null
+        return collectionPickers.findPickerFor(category).openAt(category, wallpaper)
+    }
+
+    private fun startWallpaperPreview(wallpaperModel: WallpaperModel, setEntryPoint: Int) {
+        persistentWallpaperModelRepository.setWallpaperModel(wallpaperModel)
+        ActivityUtils.startWallpaperPreviewActivity(
+            activity = requireActivity(),
+            isCreativeCategories = false,
+            shouldNavigateToExtendedWallpaperEffects = false,
+            isViewAsHome = !isDesktopUi,
+            requestCode = CustomizationPickerActivity.VIEW_ONLY_PREVIEW_WALLPAPER_REQUEST_CODE,
+            isMultiPanesEnabled = multiPanesChecker.isMultiPanesEnabled(requireContext()),
+            setWallpaperEntryPoint = setEntryPoint,
+            wallpaperLaunchSource = arguments?.getString(WALLPAPER_LAUNCH_SOURCE) ?: "",
         )
     }
 

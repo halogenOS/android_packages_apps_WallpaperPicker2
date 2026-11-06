@@ -124,17 +124,15 @@ constructor(
                     } else {
                         wallpaperModel.value.commonWallpaperData.title
                     }
-                val staticWallpaperModel =
-                    wallpaperModel.value as? WallpaperModel.StaticWallpaperModel
                 TileViewModel(
                     defaultDrawable = null,
-                    thumbnailAsset = staticWallpaperModel?.commonWallpaperData?.thumbAsset,
+                    thumbnailAsset = wallpaperModel.value.commonWallpaperData.thumbAsset,
                     text = wallpaperModel.value.commonWallpaperData.title ?: "",
                     showTitle = false,
                     contentDescription = defaultWallpaperContentDesscription,
                     maxCategoriesInRow = SectionCardinality.Single,
                 ) {
-                    navigateToPreviewScreen(wallpaperModel.value, CategoryType.Default)
+                    navigateToWallpaper(wallpaperModel.value)
                 }
             } ?: emptyList()
         }
@@ -243,6 +241,12 @@ constructor(
         }
     }
 
+    private fun navigateToWallpaper(wallpaper: WallpaperModel) {
+        viewModelScope.launch {
+            _navigationEvents.emit(NavigationEvent.NavigateToWallpaper(wallpaper))
+        }
+    }
+
     private fun navigateToWallpaperCollection(
         categoryModel: CategoryModel,
         categoryType: CategoryType,
@@ -272,6 +276,12 @@ constructor(
             val categoryType: CategoryType,
             val entryPoint: Int,
         ) : NavigationEvent()
+
+        /**
+         * Opens [wallpaper] in the picker set for the collection that contains it, or in the
+         * preview screen when that picker opens only at the start of a collection.
+         */
+        data class NavigateToWallpaper(val wallpaper: WallpaperModel) : NavigationEvent()
 
         data class NavigateToWallpaperCollection(
             val categoryModel: CategoryModel,

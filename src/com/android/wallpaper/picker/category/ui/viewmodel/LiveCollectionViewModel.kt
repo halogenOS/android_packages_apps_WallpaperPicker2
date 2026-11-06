@@ -79,9 +79,13 @@ constructor(private val interactor: LiveCollectionInteractor, savedStateHandle: 
     ): LiveCollectionState {
         if (collection.wallpapers.isEmpty()) return LiveCollectionState.Empty(collection.title)
         val wallpapers = collection.wallpapers.map { LiveWallpaperItem(it, placements[it.service]) }
+        fun indexOrNull(isFirst: (LiveWallpaperItem) -> Boolean) =
+            wallpapers.indexOfFirst(isFirst).takeIf { it >= 0 }
         val firstPage =
-            wallpapers.indexOfFirst { it.placement != null }.takeIf { it >= 0 }
-                ?: wallpapers.indexOfFirst { it.wallpaper == collection.featured }.coerceAtLeast(0)
+            indexOrNull { it.wallpaper.service == arguments.firstService }
+                ?: indexOrNull { it.placement != null }
+                ?: indexOrNull { it.wallpaper == collection.featured }
+                ?: 0
         return LiveCollectionState.Shown(collection.title, wallpapers, firstPage, setting)
     }
 
@@ -98,7 +102,10 @@ internal sealed interface LiveCollectionState {
     /** The collection titled [title] holds no live wallpaper. */
     data class Empty(val title: String) : LiveCollectionState
 
-    /** The wallpapers in the collection, starting at [firstPage]: the set one or the featured. */
+    /**
+     * The wallpapers in the collection, starting at [firstPage]: the one run by the service named
+     * in the arguments, else the set one, else the featured one, else the first.
+     */
     data class Shown(
         val title: String,
         val wallpapers: List<LiveWallpaperItem>,

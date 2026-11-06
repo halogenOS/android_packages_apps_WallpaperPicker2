@@ -3,6 +3,7 @@
 package com.android.wallpaper.picker.category.ui.view.providers
 
 import androidx.fragment.app.Fragment
+import com.android.wallpaper.picker.data.WallpaperModel
 import com.android.wallpaper.picker.data.category.CategoryModel
 
 /**
@@ -12,4 +13,10 @@ import com.android.wallpaper.picker.data.category.CategoryModel
 interface CollectionPicker {
     /** Returns the screen showing [category]. */
     operator fun invoke(category: CategoryModel): Fragment
+
+    /**
+     * Returns the screen showing [category] with [wallpaper] first, or null for a picker that opens
+     * only at the start of a collection.
+     */
+    fun openAt(category: CategoryModel, wallpaper: WallpaperModel): Fragment? = null
 }
