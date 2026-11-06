@@ -16,6 +16,11 @@
 package com.android.wallpaper.asset;
 
 import android.graphics.drawable.Drawable;
+import android.os.CancellationSignal;
+import android.os.OperationCanceledException;
+import android.util.Size;
+
+import androidx.annotation.Nullable;
 
 import com.bumptech.glide.Priority;
 import com.bumptech.glide.load.DataSource;
@@ -24,8 +29,6 @@ import com.bumptech.glide.load.data.DataFetcher;
 import com.bumptech.glide.load.model.ModelLoader;
 import com.bumptech.glide.load.model.ModelLoaderFactory;
 import com.bumptech.glide.load.model.MultiModelLoaderFactory;
-
-import androidx.annotation.Nullable;
 
 /**
  * Glide model loader for live wallpaper thumbnails.
@@ -41,9 +44,9 @@ public class LiveWallpaperThumbAssetLoader implements
     @Nullable
     @Override
     public LoadData<Drawable> buildLoadData(LiveWallpaperThumbAsset liveWallpaperThumbAsset,
-                                            int unusedWidth, int unusedHeight, Options options) {
+                                            int width, int height, Options options) {
         return new LoadData<>(liveWallpaperThumbAsset.getKey(),
-                new LiveWallpaperThumbFetcher(liveWallpaperThumbAsset));
+                new LiveWallpaperThumbFetcher(liveWallpaperThumbAsset, new Size(width, height)));
     }
 
     /**
@@ -71,15 +74,23 @@ public class LiveWallpaperThumbAssetLoader implements
      */
     private static class LiveWallpaperThumbFetcher implements DataFetcher<Drawable> {
 
-        private LiveWallpaperThumbAsset mLiveWallpaperThumbAsset;
+        private final LiveWallpaperThumbAsset mLiveWallpaperThumbAsset;
+        private final Size mSize;
+        private final CancellationSignal mCancellationSignal = new CancellationSignal();
 
-        public LiveWallpaperThumbFetcher(LiveWallpaperThumbAsset liveWallpaperThumbAsset) {
+        LiveWallpaperThumbFetcher(LiveWallpaperThumbAsset liveWallpaperThumbAsset, Size size) {
             mLiveWallpaperThumbAsset = liveWallpaperThumbAsset;
+            mSize = size;
         }
 
         @Override
         public void loadData(Priority priority, DataCallback<? super Drawable> callback) {
-            callback.onDataReady(mLiveWallpaperThumbAsset.getThumbnailDrawable());
+            try {
+                callback.onDataReady(
+                        mLiveWallpaperThumbAsset.getThumbnailDrawable(mSize, mCancellationSignal));
+            } catch (OperationCanceledException e) {
+                callback.onLoadFailed(e);
+            }
         }
 
         @Override
@@ -89,7 +100,7 @@ public class LiveWallpaperThumbAssetLoader implements
 
         @Override
         public void cancel() {
-            // no-op
+            mCancellationSignal.cancel();
         }
 
         @Override

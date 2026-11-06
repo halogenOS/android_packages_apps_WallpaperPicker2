@@ -21,4 +21,10 @@ import com.android.wallpaper.picker.data.WallpaperModel
 data class WallpaperModelsPair(
     val homeWallpaper: WallpaperModel,
     val lockWallpaper: WallpaperModel?,
-)
+) {
+    /**
+     * The wallpaper that the lock screen shows: its own, or the home wallpaper when it has none.
+     */
+    val wallpaperOnLockScreen: WallpaperModel
+        get() = lockWallpaper ?: homeWallpaper
+}

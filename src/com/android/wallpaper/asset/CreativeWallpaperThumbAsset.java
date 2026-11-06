@@ -23,6 +23,6 @@ import android.net.Uri;
 public class CreativeWallpaperThumbAsset extends LiveWallpaperThumbAsset {
 
     public CreativeWallpaperThumbAsset(Context context, WallpaperInfo info, Uri thumbnailUri) {
-        super(context, info, thumbnailUri, /* shouldCacheThumbnail= */ false);
+        super(context, info, thumbnailUri);
     }
 }

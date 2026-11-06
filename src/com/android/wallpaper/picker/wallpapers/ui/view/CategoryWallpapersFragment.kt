@@ -25,18 +25,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
-import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.android.compose.theme.PlatformTheme
-import com.android.wallpaper.R
 import com.android.wallpaper.model.WallpaperRotationInitializer.NETWORK_PREFERENCE_WIFI_ONLY
 import com.android.wallpaper.picker.AppbarFragment
-import com.android.wallpaper.picker.customization.ui.CustomizationPickerActivity.Companion.CUSTOMIZATION_PICKER_FRAGMENT_TAG
-import com.android.wallpaper.picker.customization.ui.CustomizationPickerFragment
+import com.android.wallpaper.picker.customization.ui.CustomizationPickerActivity.Companion.returnToCustomizationPicker
 import com.android.wallpaper.picker.wallpapers.ui.view.compose.LoadingSpinner
 import com.android.wallpaper.picker.wallpapers.ui.view.compose.WallpapersScreenContent
 import com.android.wallpaper.picker.wallpapers.ui.view.viewmodel.CategoryWallpapersViewModel
@@ -57,22 +54,7 @@ class CategoryWallpapersFragment : Hilt_CategoryWallpapersFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.dismissScreenEvent.collect {
-                    val fragmentManager: FragmentManager = parentFragmentManager
-                    fragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
-
-                    // Ensure the root fragment is CUSTOMIZATION_PICKER_FRAGMENT_TAG
-                    if (
-                        fragmentManager.findFragmentByTag(CUSTOMIZATION_PICKER_FRAGMENT_TAG) == null
-                    ) {
-                        fragmentManager
-                            .beginTransaction()
-                            .replace(
-                                R.id.fragment_container,
-                                CustomizationPickerFragment(),
-                                CUSTOMIZATION_PICKER_FRAGMENT_TAG,
-                            )
-                            .commit()
-                    }
+                    returnToCustomizationPicker(parentFragmentManager)
                 }
             }
         }

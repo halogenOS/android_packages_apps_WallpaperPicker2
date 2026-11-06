@@ -27,4 +27,8 @@ data class CollectionCategoryData(
     val isSingleWallpaperCategory: Boolean,
     /** Key for the picker bound in this app that opens this collection, or null for the grid. */
     val pickerType: String? = null,
-)
+) {
+    /** The wallpaper that the tile of this collection features, or null for none. */
+    val featuredWallpaper: WallpaperModel?
+        get() = wallpaperModels.getOrNull(featuredThumbnailIndex)
+}

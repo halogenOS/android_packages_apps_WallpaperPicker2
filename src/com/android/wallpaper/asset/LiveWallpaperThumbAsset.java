@@ -17,9 +17,7 @@ package com.android.wallpaper.asset;
 
 import android.app.Activity;
 import android.content.Context;
-import android.content.res.AssetFileDescriptor;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Point;
 import android.graphics.Rect;
@@ -28,9 +26,11 @@ import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
 import android.net.Uri;
+import android.os.CancellationSignal;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.util.Size;
 import android.widget.ImageView;
 
 import androidx.annotation.Nullable;
@@ -68,7 +68,11 @@ import java.util.concurrent.TimeoutException;
 public class LiveWallpaperThumbAsset extends Asset {
     private static final String TAG = "LiveWallpaperThumbAsset";
     private static final ExecutorService sExecutorService = Executors.newCachedThreadPool();
-    private static final int LOW_RES_THUMB_TIMEOUT_SECONDS = 2;
+    // The deadline of a read from a URI, and then the two seconds for the thumbnail resource.
+    private static final long LOW_RES_THUMB_TIMEOUT_MILLIS =
+            ThumbnailImage.THUMBNAIL_READ_DEADLINE_MILLIS + TimeUnit.SECONDS.toMillis(2);
+    // The size of the original image, at most the size of the display.
+    private static final Size ORIGINAL_SIZE = new Size(Target.SIZE_ORIGINAL, Target.SIZE_ORIGINAL);
 
     protected final Context mContext;
     protected final android.app.WallpaperInfo mInfo;
@@ -76,23 +80,21 @@ public class LiveWallpaperThumbAsset extends Asset {
     // The content Uri of thumbnail
     @VisibleForTesting(otherwise = VisibleForTesting.PROTECTED)
     public Uri mUri;
-    protected boolean mShouldCacheThumbnail;
     private Drawable mCachedThumbnail;
 
+    /**
+     * The thumbnail declared by the wallpaper: the image at its declared thumbnail URI, else its
+     * thumbnail resource.
+     */
     public LiveWallpaperThumbAsset(Context context, android.app.WallpaperInfo info) {
-        this(context, info, /* uri= */ null);
+        this(context, info,
+                DeclaredThumbnail.findDeclaredThumbnailUri(context.getPackageManager(), info));
     }
 
     public LiveWallpaperThumbAsset(Context context, android.app.WallpaperInfo info, Uri uri) {
-        this(context, info, uri, /* shouldCacheThumbnail= */ true);
-    }
-
-    public LiveWallpaperThumbAsset(Context context, android.app.WallpaperInfo info, Uri uri,
-            boolean shouldCacheThumbnail) {
         mContext = context.getApplicationContext();
         mInfo = info;
         mUri = uri;
-        mShouldCacheThumbnail = shouldCacheThumbnail;
         mLayerResolver = InjectorProvider.getInjector().getDrawableLayerResolver();
     }
 
@@ -100,7 +102,8 @@ public class LiveWallpaperThumbAsset extends Asset {
     public void decodeBitmap(int targetWidth, int targetHeight, boolean useHardwareBitmapIfPossible,
                              BitmapReceiver receiver) {
         sExecutorService.execute(() -> {
-            Drawable thumb = getThumbnailDrawable();
+            Drawable thumb = getThumbnailDrawable(new Size(targetWidth, targetHeight),
+                    new CancellationSignal());
 
             // Live wallpaper components may or may not specify a thumbnail drawable.
             if (thumb instanceof BitmapDrawable) {
@@ -144,7 +147,7 @@ public class LiveWallpaperThumbAsset extends Asset {
     @Override
     public void decodeBitmap(BitmapReceiver receiver) {
         sExecutorService.execute(() -> {
-            Drawable thumb = getThumbnailDrawable();
+            Drawable thumb = getThumbnailDrawable(ORIGINAL_SIZE, new CancellationSignal());
             Bitmap bitmap = null;
             // Live wallpaper components may or may not specify a thumbnail drawable.
             if (thumb instanceof BitmapDrawable) {
@@ -196,21 +199,13 @@ public class LiveWallpaperThumbAsset extends Asset {
     @Override
     public void loadDrawable(Context context, ImageView imageView,
                              int placeholderColor) {
-        RequestOptions reqOptions;
-        if (mUri != null) {
-            reqOptions = RequestOptions.centerCropTransform().apply(RequestOptions
-                    .diskCacheStrategyOf(DiskCacheStrategy.NONE)
-                    .skipMemoryCache(true))
-                    .placeholder(new ColorDrawable(placeholderColor));
-        } else {
-            reqOptions = RequestOptions.centerCropTransform()
-                    .placeholder(new ColorDrawable(placeholderColor));
-        }
         imageView.setBackgroundColor(placeholderColor);
         Glide.with(context)
                 .asDrawable()
                 .load(LiveWallpaperThumbAsset.this)
-                .apply(reqOptions)
+                .apply(RequestOptions.centerCropTransform()
+                        .placeholder(new ColorDrawable(placeholderColor))
+                        .apply(cacheOptions()))
                 .transition(DrawableTransitionOptions.withCrossFade())
                 .into(imageView);
     }
@@ -220,21 +215,13 @@ public class LiveWallpaperThumbAsset extends Asset {
             final int transitionDurationMillis,
             @Nullable final DrawableLoadedListener drawableLoadedListener,
             int placeholderColor, @Nullable PermissionErrorListener permissionErrorListener) {
-        RequestOptions reqOptions;
-        if (mUri != null) {
-            reqOptions = RequestOptions.centerCropTransform().apply(RequestOptions
-                            .diskCacheStrategyOf(DiskCacheStrategy.NONE)
-                            .skipMemoryCache(true))
-                    .placeholder(new ColorDrawable(placeholderColor));
-        } else {
-            reqOptions = RequestOptions.centerCropTransform()
-                    .placeholder(new ColorDrawable(placeholderColor));
-        }
         imageView.setBackgroundColor(placeholderColor);
         Glide.with(context)
                 .asDrawable()
                 .load(LiveWallpaperThumbAsset.this)
-                .apply(reqOptions)
+                .apply(RequestOptions.centerCropTransform()
+                        .placeholder(new ColorDrawable(placeholderColor))
+                        .apply(cacheOptions()))
                 .transition(DrawableTransitionOptions.withCrossFade(transitionDurationMillis))
                 .addListener(new RequestListener<Drawable>() {
                     @Override
@@ -266,7 +253,8 @@ public class LiveWallpaperThumbAsset extends Asset {
                 .asDrawable()
                 .load(LiveWallpaperThumbAsset.this)
                 .apply(RequestOptions.bitmapTransform(finalTransformation)
-                        .placeholder(new ColorDrawable(placeholderColor)))
+                        .placeholder(new ColorDrawable(placeholderColor))
+                        .apply(cacheOptions()))
                 .into(imageView);
     }
 
@@ -277,8 +265,9 @@ public class LiveWallpaperThumbAsset extends Asset {
             Drawable drawable = Glide.with(context)
                     .asDrawable()
                     .load(this)
+                    .apply(cacheOptions())
                     .submit()
-                    .get(LOW_RES_THUMB_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                    .get(LOW_RES_THUMB_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
 
             if (drawable instanceof BitmapDrawable) {
                 BitmapDrawable bitmapDrawable = (BitmapDrawable) drawable;
@@ -307,6 +296,16 @@ public class LiveWallpaperThumbAsset extends Asset {
     }
 
     /**
+     * Returns the cache options of every Glide load of this asset. An image at a URI can change,
+     * for example with the theme colors, so Glide skips its memory and disk caches for it.
+     */
+    private RequestOptions cacheOptions() {
+        return mUri != null
+                ? RequestOptions.diskCacheStrategyOf(DiskCacheStrategy.NONE).skipMemoryCache(true)
+                : new RequestOptions();
+    }
+
+    /**
      * Returns a Glide cache key.
      */
     Key getKey() {
@@ -317,31 +316,36 @@ public class LiveWallpaperThumbAsset extends Asset {
      * Returns the thumbnail drawable for the live wallpaper synchronously. Should not be called on
      * the main UI thread.
      *
-     * <p>Cache the thumbnail if {@code mShouldCacheThumbnail} is true.
+     * <p>Caches the thumbnail of an asset without a URI. An image at a URI can change, so it is
+     * read again on each call.
+     *
+     * @param size the size in pixels at which the thumbnail is shown, see
+     *             {@link ThumbnailImage#readThumbnailImage}
+     * @param signal cancels reading the image at the URI
+     * @throws android.os.OperationCanceledException when {@code signal} is cancelled
      */
     @WorkerThread
-    protected Drawable getThumbnailDrawable() {
-        if (mShouldCacheThumbnail && mCachedThumbnail != null) return mCachedThumbnail;
-
-        Drawable fromUri = loadThumbnailFromUri();
-        Drawable thumb = (fromUri != null) ? fromUri : loadThumbnailFromInfo();
-
-        if (mShouldCacheThumbnail) mCachedThumbnail = thumb;
-
-        return thumb;
+    protected Drawable getThumbnailDrawable(Size size, CancellationSignal signal) {
+        if (mUri == null) {
+            if (mCachedThumbnail == null) mCachedThumbnail = loadThumbnailFromInfo();
+            return mCachedThumbnail;
+        }
+        Drawable fromUri = loadThumbnailFromUri(size, signal);
+        return (fromUri != null) ? fromUri : loadThumbnailFromInfo();
     }
 
-    private Drawable loadThumbnailFromUri() {
-        if (mUri != null) {
-            try (AssetFileDescriptor assetFileDescriptor =
-                         mContext.getContentResolver().openAssetFileDescriptor(mUri, "r")) {
-                if (assetFileDescriptor != null) {
-                    return new BitmapDrawable(mContext.getResources(),
-                            BitmapFactory.decodeStream(assetFileDescriptor.createInputStream()));
-                }
-            } catch (IOException e) {
-                Log.w(TAG, "Not found thumbnail from URI.", e);
-            }
+    @Nullable
+    private Drawable loadThumbnailFromUri(Size size, CancellationSignal signal) {
+        try {
+            return new BitmapDrawable(mContext.getResources(), ThumbnailImage.readThumbnailImage(
+                    mContext.getContentResolver(), mUri, size,
+                    InjectorProvider.getInjector().getDisplayUtils(mContext)
+                            .getMaxDisplaysDimension(),
+                    signal));
+        } catch (IOException e) {
+            Log.w(TAG, "The thumbnail at " + mUri + " could not be read.", e);
+        } catch (SecurityException e) {
+            Log.w(TAG, "The picker is not allowed to read the thumbnail at " + mUri + ".", e);
         }
         return null;
     }
@@ -356,7 +360,7 @@ public class LiveWallpaperThumbAsset extends Asset {
     private static final class LiveWallpaperThumbKey implements Key {
         private android.app.WallpaperInfo mInfo;
 
-        public LiveWallpaperThumbKey(android.app.WallpaperInfo info) {
+        LiveWallpaperThumbKey(android.app.WallpaperInfo info) {
             mInfo = info;
         }
 

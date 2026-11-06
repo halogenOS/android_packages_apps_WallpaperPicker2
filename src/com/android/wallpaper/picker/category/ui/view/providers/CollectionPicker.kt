@@ -12,9 +12,4 @@ import com.android.wallpaper.picker.data.category.CategoryModel
 interface CollectionPicker {
     /** Returns the screen showing [category]. */
     operator fun invoke(category: CategoryModel): Fragment
-
-    companion object {
-        /** Key of the stock grid, which opens every collection that names no other picker. */
-        const val GRID = "grid"
-    }
 }

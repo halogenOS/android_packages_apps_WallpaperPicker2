@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    SPDX-FileCopyrightText: The halogenOS Project
+    SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <!-- Line under the name of a live wallpaper in a collection, saying that it is set on
+         the home screen. [CHAR LIMIT=50] -->
+    <string name="live_collection_set_on_home">On home screen</string>
+
+    <!-- Line under the name of a live wallpaper in a collection, saying that it is set on
+         the lock screen. [CHAR LIMIT=50] -->
+    <string name="live_collection_set_on_lock">On lock screen</string>
+
+    <!-- Line under the name of a live wallpaper in a collection, saying that it is set on
+         both the home screen and the lock screen. [CHAR LIMIT=50] -->
+    <string name="live_collection_set_on_both">On home and lock screens</string>
+
+    <!-- Shown in place of the carousel when a collection contains no live wallpaper that can
+         run. [CHAR LIMIT=120] -->
+    <string name="live_collection_empty">This collection has no live wallpapers. Go back to choose another collection.</string>
+
+    <!-- Shown above the set button of a live collection when setting the chosen wallpaper
+         failed. [CHAR LIMIT=80] -->
+    <string name="live_collection_set_failed">Couldn\'t set the wallpaper. Try again.</string>
+
+    <!-- Shown above the set button of a live collection when the chosen wallpaper was removed
+         from the collection before it could be set. [CHAR LIMIT=100] -->
+    <string name="live_collection_wallpaper_gone">This wallpaper is no longer in the collection. Choose another one.</string>
+</resources>

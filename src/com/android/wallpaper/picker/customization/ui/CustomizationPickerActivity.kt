@@ -251,21 +251,7 @@ class CustomizationPickerActivity :
                     requestCode == VIEW_ONLY_PREVIEW_WALLPAPER_REQUEST_CODE ||
                     requestCode == PREVIEW_LIVE_WALLPAPER_REQUEST_CODE)
         ) {
-            // Navigate back to the root fragment (CustomizationPickerFragment2)
-            val fragmentManager: FragmentManager = supportFragmentManager
-            // Pop all the fragments until the root fragment
-            fragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
-            // Ensure the root fragment is CUSTOMIZATION_PICKER_FRAGMENT_TAG
-            if (fragmentManager.findFragmentByTag(CUSTOMIZATION_PICKER_FRAGMENT_TAG) == null) {
-                fragmentManager
-                    .beginTransaction()
-                    .replace(
-                        R.id.fragment_container, // containerViewId
-                        CustomizationPickerFragment(), // fragment
-                        CUSTOMIZATION_PICKER_FRAGMENT_TAG, // tag
-                    )
-                    .commit()
-            }
+            returnToCustomizationPicker(supportFragmentManager)
         }
     }
 
@@ -284,5 +270,23 @@ class CustomizationPickerActivity :
         const val PREVIEW_LIVE_WALLPAPER_REQUEST_CODE = 4
         const val VIEW_ONLY_PREVIEW_WALLPAPER_REQUEST_CODE = 2
         const val PREVIEW_WALLPAPER_REQUEST_CODE = 1
+
+        /**
+         * Closes every screen opened over the customization picker of [fragmentManager], and shows
+         * the customization picker again when it is not on the back stack.
+         */
+        fun returnToCustomizationPicker(fragmentManager: FragmentManager) {
+            fragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
+            if (fragmentManager.findFragmentByTag(CUSTOMIZATION_PICKER_FRAGMENT_TAG) == null) {
+                fragmentManager
+                    .beginTransaction()
+                    .replace(
+                        R.id.fragment_container,
+                        CustomizationPickerFragment(),
+                        CUSTOMIZATION_PICKER_FRAGMENT_TAG,
+                    )
+                    .commit()
+            }
+        }
     }
 }
