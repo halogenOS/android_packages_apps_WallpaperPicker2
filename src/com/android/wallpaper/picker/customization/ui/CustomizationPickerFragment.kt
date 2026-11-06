@@ -1043,7 +1043,9 @@ class CustomizationPickerFragment :
                 )
             }
         }
-        (PickerPage.entries - customizationPickerViewModel.pages).forEach { previewPager.hidePage(it) }
+        (PickerPage.entries - customizationPickerViewModel.pages).forEach {
+            previewPager.hidePage(it)
+        }
 
         return PreviewPagerViews(
             previewPager = previewPager,
