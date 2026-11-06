@@ -39,6 +39,9 @@ open class WallpaperCategory : Category {
     var featuredThumbnailIndex: Int = 0
         private set
 
+    /** Key for the picker that opens this collection, or null for the stock grid. */
+    val pickerType: String?
+
     constructor(
         title: String,
         collectionId: String,
@@ -64,22 +67,27 @@ open class WallpaperCategory : Category {
         priority: Int,
         isDownloadable: Boolean = false,
         downloadComponent: String? = null,
+        pickerType: String? = null,
     ) : super(title, collectionId, priority, isDownloadable, downloadComponent) {
         this.wallpapers = wallpapers
         wallpapersLock = Any()
         this.featuredThumbnailIndex = featuredThumbnailIndex
+        this.pickerType = pickerType
     }
 
+    @JvmOverloads
     constructor(
         title: String,
         collectionId: String,
         thumbAsset: Asset?,
         wallpapers: List<WallpaperInfo>?,
         priority: Int,
+        pickerType: String? = null,
     ) : super(title, collectionId, priority, false, null) {
         this.wallpapers = wallpapers
         wallpapersLock = Any()
         this.thumbAsset = thumbAsset
+        this.pickerType = pickerType
     }
 
     constructor(
@@ -139,6 +147,7 @@ open class WallpaperCategory : Category {
         private val mTitle: String
         private var mPriority: Int
         private val mFeaturedId: String?
+        private val mPickerType: String?
 
         @IdRes private val mThumbResId: Int
 
@@ -151,6 +160,7 @@ open class WallpaperCategory : Category {
                     ""
                 }
             mFeaturedId = attrs.getAttributeValue(null, "featured")
+            mPickerType = attrs.getAttributeValue(null, "picker")
             mPriority = attrs.getAttributeIntValue(null, "priority", -1)
             mThumbResId = attrs.getAttributeResourceValue(null, "thumbnail", 0)
         }
@@ -197,6 +207,7 @@ open class WallpaperCategory : Category {
                     ResourceAsset(mPartnerRes, mThumbResId, true),
                     mWallpapers,
                     mPriority,
+                    pickerType = mPickerType,
                 )
             } else {
                 var featuredIndex = 0
@@ -206,7 +217,14 @@ open class WallpaperCategory : Category {
                         break
                     }
                 }
-                return WallpaperCategory(mTitle, id, featuredIndex, mWallpapers, mPriority)
+                return WallpaperCategory(
+                    mTitle,
+                    id,
+                    featuredIndex,
+                    mWallpapers,
+                    mPriority,
+                    pickerType = mPickerType,
+                )
             }
         }
 

@@ -24,6 +24,7 @@ import com.android.wallpaper.model.ThirdPartyAppCategory
 import com.android.wallpaper.model.WallpaperCategory
 import com.android.wallpaper.picker.data.category.CategoryModel
 import com.android.wallpaper.picker.data.category.CollectionCategoryData
+import com.android.wallpaper.picker.data.category.CollectionPickerTypes
 import com.android.wallpaper.picker.data.category.CommonCategoryData
 import com.android.wallpaper.picker.data.category.ImageCategoryData
 import com.android.wallpaper.picker.data.category.ThirdPartyCategoryData
@@ -39,6 +40,7 @@ class DefaultCategoryFactory
 constructor(
     @ApplicationContext private val context: Context,
     private val wallpaperModelFactory: WallpaperModelFactory,
+    private val collectionPickerTypes: CollectionPickerTypes,
 ) : CategoryFactory {
 
     override fun getCategoryModel(category: Category): CategoryModel {
@@ -74,6 +76,7 @@ constructor(
             thumbAsset = getThumbnail(context),
             featuredThumbnailIndex = featuredThumbnailIndex,
             isSingleWallpaperCategory = isSingleWallpaperCategory,
+            pickerType = collectionPickerTypes.read(pickerType, collectionId),
         )
     }
 

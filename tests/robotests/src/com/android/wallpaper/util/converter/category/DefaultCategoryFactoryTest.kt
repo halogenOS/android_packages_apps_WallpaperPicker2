@@ -21,6 +21,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.android.wallpaper.model.ImageCategory
 import com.android.wallpaper.model.PlaceholderCategory
 import com.android.wallpaper.picker.data.category.CategoryModel
+import com.android.wallpaper.picker.data.category.CollectionPickerTypes
 import com.android.wallpaper.util.converter.WallpaperModelFactory
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
@@ -49,7 +50,12 @@ class DefaultCategoryFactoryTest {
     fun setUp() {
         hiltRule.inject()
         context = ApplicationProvider.getApplicationContext<HiltTestApplication>()
-        mCategoryFactory = DefaultCategoryFactory(context, wallpaperModelFactory)
+        mCategoryFactory =
+            DefaultCategoryFactory(
+                context,
+                wallpaperModelFactory,
+                CollectionPickerTypes(emptySet()),
+            )
     }
 
     @Test

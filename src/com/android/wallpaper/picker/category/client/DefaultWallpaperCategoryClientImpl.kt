@@ -31,6 +31,7 @@ import com.android.wallpaper.model.ThirdPartyAppCategory
 import com.android.wallpaper.model.ThirdPartyLiveWallpaperCategory
 import com.android.wallpaper.model.WallpaperCategory
 import com.android.wallpaper.model.WallpaperInfo
+import com.android.wallpaper.model.isDefaultImageOffered
 import com.android.wallpaper.module.PartnerProvider
 import com.android.wallpaper.util.WallpaperParser
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -81,7 +82,7 @@ constructor(
     override suspend fun getOnDeviceCategory(): Category? {
         val onDeviceWallpapers = mutableListOf<WallpaperInfo>()
 
-        if (!partnerProvider.shouldHideDefaultWallpaper()) {
+        if (isDefaultImageOffered(context, partnerProvider)) {
             val defaultWallpaperInfo = DefaultWallpaperInfo()
             onDeviceWallpapers.add(defaultWallpaperInfo)
         }

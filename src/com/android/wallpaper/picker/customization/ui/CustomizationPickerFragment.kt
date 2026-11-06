@@ -71,6 +71,7 @@ import com.android.wallpaper.picker.MyPhotosStarter
 import com.android.wallpaper.picker.category.ui.view.CategoriesFragment
 import com.android.wallpaper.picker.category.ui.view.MyPhotosStarterImpl
 import com.android.wallpaper.picker.category.ui.view.PhotoPickerFragment
+import com.android.wallpaper.picker.category.ui.view.providers.CollectionPickers
 import com.android.wallpaper.picker.category.ui.view.providers.IndividualPickerFactory
 import com.android.wallpaper.picker.common.preview.data.repository.PersistentWallpaperModelRepository
 import com.android.wallpaper.picker.common.preview.ui.binder.BasePreviewBinder
@@ -105,8 +106,6 @@ import com.android.wallpaper.picker.data.WallpaperModel
 import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.preview.ui.WallpaperPreviewActivity
 import com.android.wallpaper.picker.preview.ui.view.ClickableMotionLayout
-import com.android.wallpaper.picker.wallpapers.data.repository.CategoryWallpapersRepository
-import com.android.wallpaper.picker.wallpapers.ui.view.CategoryWallpapersFragment
 import com.android.wallpaper.util.ActivityUtils
 import com.android.wallpaper.util.CuratedPhotosTimeUtil
 import com.android.wallpaper.util.DisplayUtils
@@ -144,7 +143,7 @@ class CustomizationPickerFragment :
     @Inject lateinit var wallpaperModelFactory: WallpaperModelFactory
     @Inject lateinit var myPhotosStarterImpl: MyPhotosStarterImpl
     @Inject lateinit var iconStyleViewUtil: IconStyleViewUtil
-    @Inject lateinit var categoryWallpapersRepository: CategoryWallpapersRepository
+    @Inject lateinit var collectionPickers: CollectionPickers
 
     private val customizationPickerViewModel: CustomizationPickerViewModel2 by viewModels()
 
@@ -839,8 +838,8 @@ class CustomizationPickerFragment :
             },
             navigateToWallpaperCollectionScreen = { categoryModel, categoryType ->
                 if (BaseFlags.get(requireContext()).isWallpapersFragmentEnabled()) {
-                    categoryWallpapersRepository.setSelectedCategory(category = categoryModel)
-                    switchFragment(CategoryWallpapersFragment())
+                    val openCollection = collectionPickers.findPickerFor(categoryModel)
+                    switchFragment(openCollection(categoryModel))
                 } else {
                     switchFragment(
                         individualPickerFactory.getIndividualPickerInstance(

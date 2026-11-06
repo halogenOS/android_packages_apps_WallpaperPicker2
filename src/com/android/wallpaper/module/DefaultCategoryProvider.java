@@ -31,6 +31,7 @@ import com.android.wallpaper.model.Category;
 import com.android.wallpaper.model.CategoryProvider;
 import com.android.wallpaper.model.CategoryReceiver;
 import com.android.wallpaper.model.DefaultWallpaperInfo;
+import com.android.wallpaper.model.DefaultWallpaperOffer;
 import com.android.wallpaper.model.ImageCategory;
 import com.android.wallpaper.model.LegacyPartnerWallpaperInfo;
 import com.android.wallpaper.model.LiveWallpaperInfo;
@@ -303,7 +304,7 @@ public class DefaultCategoryProvider implements CategoryProvider {
         protected Category getOnDeviceCategory() {
             List<WallpaperInfo> onDeviceWallpapers = new ArrayList<>();
 
-            if (!mPartnerProvider.shouldHideDefaultWallpaper()) {
+            if (DefaultWallpaperOffer.isDefaultImageOffered(mAppContext, mPartnerProvider)) {
                 DefaultWallpaperInfo defaultWallpaperInfo = new DefaultWallpaperInfo();
                 onDeviceWallpapers.add(defaultWallpaperInfo);
             }

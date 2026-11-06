@@ -53,6 +53,7 @@ import com.android.wallpaper.picker.AppbarFragment
 import com.android.wallpaper.picker.MyPhotosStarter
 import com.android.wallpaper.picker.category.ui.binder.BannerProvider
 import com.android.wallpaper.picker.category.ui.binder.CategoriesBinder
+import com.android.wallpaper.picker.category.ui.view.providers.CollectionPickers
 import com.android.wallpaper.picker.category.ui.view.providers.IndividualPickerFactory
 import com.android.wallpaper.picker.category.ui.viewmodel.CategoriesViewModel
 import com.android.wallpaper.picker.common.preview.data.repository.PersistentWallpaperModelRepository
@@ -61,8 +62,6 @@ import com.android.wallpaper.picker.customization.ui.CustomizationPickerActivity
 import com.android.wallpaper.picker.customization.ui.binder.ColorUpdateBinder
 import com.android.wallpaper.picker.customization.ui.viewmodel.ColorUpdateViewModel
 import com.android.wallpaper.picker.data.WallpaperModel
-import com.android.wallpaper.picker.wallpapers.data.repository.CategoryWallpapersRepository
-import com.android.wallpaper.picker.wallpapers.ui.view.CategoryWallpapersFragment
 import com.android.wallpaper.util.ActivityUtils
 import com.android.wallpaper.util.CuratedPhotosTimeUtil
 import com.android.wallpaper.util.LaunchSourceUtils.WALLPAPER_LAUNCH_SOURCE
@@ -86,7 +85,7 @@ class CategoriesFragment : Hilt_CategoriesFragment() {
     @Inject lateinit var bannerProvider: BannerProvider
     @Inject lateinit var curatedPhotosTimeUtil: CuratedPhotosTimeUtil
     @Inject lateinit var userEventLogger: UserEventLogger
-    @Inject lateinit var categoryWallpapersRepository: CategoryWallpapersRepository
+    @Inject lateinit var collectionPickers: CollectionPickers
     private lateinit var photoPickerLauncher: ActivityResultLauncher<Intent>
     private lateinit var extendedWallpaperEffectsLauncher: ActivityResultLauncher<Intent>
     private lateinit var pickMedia: ActivityResultLauncher<PickVisualMediaRequest>
@@ -209,10 +208,9 @@ class CategoriesFragment : Hilt_CategoriesFragment() {
             when (navigationEvent) {
                 is CategoriesViewModel.NavigationEvent.NavigateToWallpaperCollection -> {
                     if (BaseFlags.get(requireContext()).isWallpapersFragmentEnabled()) {
-                        categoryWallpapersRepository.setSelectedCategory(
-                            category = navigationEvent.categoryModel
-                        )
-                        switchFragment(CategoryWallpapersFragment())
+                        val category = navigationEvent.categoryModel
+                        val openCollection = collectionPickers.findPickerFor(category)
+                        switchFragment(openCollection(category))
                     } else {
                         val screen: Screen? =
                             arguments?.getSerializable(DESTINATION_SCREEN, Screen::class.java)

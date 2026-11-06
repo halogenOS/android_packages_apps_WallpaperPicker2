@@ -24,5 +24,7 @@ data class CollectionCategoryData(
     val wallpaperModels: MutableList<WallpaperModel>,
     val thumbAsset: Asset?,
     val featuredThumbnailIndex: Int,
-    val isSingleWallpaperCategory: Boolean
+    val isSingleWallpaperCategory: Boolean,
+    /** Key for the picker bound in this app that opens this collection, or null for the grid. */
+    val pickerType: String? = null,
 )
